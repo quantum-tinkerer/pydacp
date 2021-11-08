@@ -16,7 +16,7 @@ plt.rcParams["legend.fontsize"] = 16
 # +
 N = 1000
 
-a = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5)
+a = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
 H = diags(a, offsets=-1) + diags(b, offsets=0) + diags(a.conj(), offsets=1)
@@ -69,3 +69,5 @@ plt.ylabel(r'$\log(E_n^{big} - E_n^{small})$')
 plt.xlabel(r'$E_n^{big}$')
 plt.xlim(-dacp.a, dacp.a)
 plt.show()
+
+
