@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def low_E_filter(v_rand, matrix, k):
     for i in range(k+1):
         if i == 0:
@@ -34,5 +35,5 @@ def basis(v_proj, matrix, indices):
             v_nm1 = v_n
             v_n = v_np1
         if i in indices:
-            v_basis.append(v_n/ np.linalg.norm(v_n))
+            v_basis.append(v_n / np.linalg.norm(v_n))
     return np.asarray(v_basis)
