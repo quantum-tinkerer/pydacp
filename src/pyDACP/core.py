@@ -66,7 +66,7 @@ class DACP_reduction:
 
     def get_filtered_vector(self):
         #TODO: check whether we need complex vector
-        v_rand=2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(self.matrix.shape[0])*1j - 0.5)
+        v_rand=2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(self.matrix.shape[0])*1j - 0.5 * (1 + 1j))
         v_rand=v_rand/np.linalg.norm(v_rand)
         K_max=int(12 * np.max(np.abs(self.bounds)) / self.a)
         vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
@@ -88,12 +88,11 @@ class DACP_reduction:
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
-        Kd = int(n*np.pi/a_r)
-        indices = np.arange(np.pi/a_r, (n+1)*np.pi/a_r, np.pi/a_r).astype(int)
+        n_array=np.arange(n).astype(int)
+        indicesp1 = n_array*(np.pi/a_r).astype(int)
+        indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
         v_proj=self.get_filtered_vector()
         self.v_basis = chebyshev.basis(v_proj=v_proj, matrix=self.G_operator(), indices=indices)
-#         norm = np.linalg.norm(v_basis, axis=1)
-#         self.v_basis = v_basis/norm[:, np.newaxis]
 
     def get_subspace_matrix(self):
         self.span_basis()
