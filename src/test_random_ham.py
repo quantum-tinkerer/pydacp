@@ -47,14 +47,14 @@ plt.show()
 
 red_eigvals, red_eigvecs = eig(ham_red)
 
-bandwidth=np.max(np.abs(true_eigvecs))
-err=bandwidth/N/2
+half_bandwidth=np.max(np.abs(true_eigvecs))
+err=half_bandwidth/N
 indx1=np.min(red_eigvals)-err<true_eigvals
 indx2=true_eigvals<=np.max(red_eigvals)+err
 indx=indx1 * indx2
 window_eigvals=true_eigvals[indx]
 
-plt.plot(np.sort(window_eigvals), np.sort(red_eigvals))
+plt.plot(np.sort(window_eigvals), np.sort(red_eigvals), '-o', c='k')
 plt.xlabel(r'$E_n^{big}$')
 plt.ylabel(r'$E_n^{small}$')
 plt.xlim(-dacp.a, dacp.a)
@@ -64,7 +64,7 @@ plt.show()
 # res=np.sort(red_eigvals).copy()[:window_eigvals.shape[0]]
 # res-=np.sort(window_eigvals)
 res=np.sort(red_eigvals)-np.sort(window_eigvals)
-plt.plot(np.sort(window_eigvals), np.log(res/dacp.a))
+plt.plot(np.sort(window_eigvals), np.log(res/dacp.a), '-o', c='k')
 plt.ylabel(r'$\log(E_n^{big} - E_n^{small})$')
 plt.xlabel(r'$E_n^{big}$')
 plt.xlim(-dacp.a, dacp.a)
