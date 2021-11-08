@@ -66,10 +66,10 @@ class DACP_reduction:
 
     def get_filtered_vector(self):
         #TODO: check whether we need complex vector
-        ψ_rand=2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(self.matrix.shape[0])*1j - 0.5)
-        ψ_rand=ψ_rand/np.linalg.norm(ψ_rand)
+        v_rand=2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(self.matrix.shape[0])*1j - 0.5)
+        v_rand=v_rand/np.linalg.norm(v_rand)
         K_max=int(12 * np.max(np.abs(self.bounds)) / self.a)
-        vec = chebyshev.low_E_filter(ψ_rand, self.F_operator(), K_max)
+        vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
         return vec / np.linalg.norm(vec)
 
     def estimate_subspace_dimenstion(self):
@@ -90,15 +90,15 @@ class DACP_reduction:
         a_r = self.a / np.max(np.abs(self.bounds))
         Kd = int(n*np.pi/a_r)
         indices = np.arange(np.pi/a_r, (n+1)*np.pi/a_r, np.pi/a_r).astype(int)
-        ψ_proj=self.get_filtered_vector()
-        self.ψ_basis = chebyshev.basis(ψ_proj=ψ_proj, matrix=self.G_operator(), indices=indices)
-#         norm = np.linalg.norm(ψ_basis, axis=1)
-#         self.ψ_basis = ψ_basis/norm[:, np.newaxis]
+        v_proj=self.get_filtered_vector()
+        self.v_basis = chebyshev.basis(v_proj=v_proj, matrix=self.G_operator(), indices=indices)
+#         norm = np.linalg.norm(v_basis, axis=1)
+#         self.v_basis = v_basis/norm[:, np.newaxis]
 
     def get_subspace_matrix(self):
         self.span_basis()
-        S = self.ψ_basis.conj() @ self.ψ_basis.T
-        matrix_proj = self.ψ_basis.conj() @ self.matrix.dot(self.ψ_basis.T)
+        S = self.v_basis.conj() @ self.v_basis.T
+        matrix_proj = self.v_basis.conj() @ self.matrix.dot(self.v_basis.T)
         s, V = eigh(S)
         indx = np.abs(s)>1e-12
         lambda_s = np.diag(1/np.sqrt(s[indx]))
