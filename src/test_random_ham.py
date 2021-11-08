@@ -16,22 +16,22 @@ plt.rcParams["legend.fontsize"] = 16
 # +
 N = 1000
 
-a = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
+c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
-H = diags(a, offsets=-1) + diags(b, offsets=0) + diags(a.conj(), offsets=1)
+H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
 
 plt.matshow(H.real.toarray())
 plt.show()
 # -
 
 # %%time
-dacp=core.DACP_reduction(H, a=0.2, eps=0.05, bounds=None, sampling_subspace=3)
+dacp=core.DACP_reduction(H, a=0.2, eps=0.05, bounds=None, sampling_subspace=1.5)
 
 true_eigvals, true_eigvecs = eig(H.todense())
-ψ_proj = dacp.get_filtered_vector()
+v_proj = dacp.get_filtered_vector()
 
-plt.scatter(np.real(true_eigvals), np.log(np.abs(true_eigvecs.T.conj()@ψ_proj)), c='k')
+plt.scatter(np.real(true_eigvals), np.log(np.abs(true_eigvecs.T.conj()@v_proj)), c='k')
 plt.xlim(-3*dacp.a, 3*dacp.a)
 plt.axvline(-dacp.a, ls='--', c='k')
 plt.axvline(dacp.a, ls='--', c='k')
@@ -47,11 +47,16 @@ plt.show()
 
 red_eigvals, red_eigvecs = eig(ham_red)
 
+# This part is quite unstable.
+# Half of the bandwidth
 half_bandwidth=np.max(np.abs(true_eigvals))
-err=half_bandwidth/N
-indx1=np.min(red_eigvals)-err<true_eigvals
+# Number 50 times smaller than level spacing.
+err=half_bandwidth/N/2
+# Get indices
+indx1=np.min(red_eigvals)-err<=true_eigvals
 indx2=true_eigvals<=np.max(red_eigvals)+err
 indx=indx1 * indx2
+# Extract real eigenvalues within the desired window.
 window_eigvals=true_eigvals[indx]
 
 plt.plot(np.sort(window_eigvals), np.sort(red_eigvals), '-o', c='k')
@@ -69,5 +74,3 @@ plt.ylabel(r'$\log(E_n^{big} - E_n^{small})$')
 plt.xlabel(r'$E_n^{big}$')
 plt.xlim(-dacp.a, dacp.a)
 plt.show()
-
-
