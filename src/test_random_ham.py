@@ -47,7 +47,7 @@ plt.show()
 
 red_eigvals, red_eigvecs = eig(ham_red)
 
-half_bandwidth=np.max(np.abs(true_eigvecs))
+half_bandwidth=np.max(np.abs(true_eigvals))
 err=half_bandwidth/N
 indx1=np.min(red_eigvals)-err<true_eigvals
 indx2=true_eigvals<=np.max(red_eigvals)+err
