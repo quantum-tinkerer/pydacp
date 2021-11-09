@@ -5,6 +5,7 @@ import kwant
 from . import chebyshev
 import numpy as np
 
+
 class DACP_reduction:
 
     def __init__(self, matrix, a, eps, bounds, sampling_subspace=1.5):
@@ -20,14 +21,14 @@ class DACP_reduction:
             Boundaries of the spectrum. If not provided the maximum and
             minimum eigenvalues are calculated.
         """
-        self.matrix=matrix
-        self.a=a
-        self.eps=eps
+        self.matrix = matrix
+        self.a = a
+        self.eps = eps
         if bounds:
-            self.bounds=bounds
+            self.bounds = bounds
         else:
             self.find_bounds()
-        self.sampling_subspace=sampling_subspace
+        self.sampling_subspace = sampling_subspace
 
     def find_bounds(self, method='sparse_diagonalization'):
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -45,30 +46,29 @@ class DACP_reduction:
                 'The matrix has a single eigenvalue, it is not possible to '
                 'obtain a spectral density.')
 
-        self.bounds=[lmin, lmax]
-
+        self.bounds = [lmin, lmax]
 
     def G_operator(self):
-        #TODO: generalize for intervals away from zero energy
-        Emin=self.bounds[0] * (1 + self.eps)
-        Emax=self.bounds[1] * (1 + self.eps)
+        # TODO: generalize for intervals away from zero energy
+        Emin = self.bounds[0] * (1 + self.eps)
+        Emax = self.bounds[1] * (1 + self.eps)
         E0 = (Emax - Emin)/2
         Ec = (Emax + Emin)/2
         return (self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
 
-
     def F_operator(self):
-        #TODO: generalize for intervals away from zero energy
+        # TODO: generalize for intervals away from zero energy
         Emax = np.max(np.abs(self.bounds)) * (1 + self.eps)
         E0 = (Emax**2 - self.a**2)/2
         Ec = (Emax**2 + self.a**2)/2
         return (self.matrix @ self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
 
     def get_filtered_vector(self):
-        #TODO: check whether we need complex vector
-        v_rand=2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(self.matrix.shape[0])*1j - 0.5)
-        v_rand=v_rand/np.linalg.norm(v_rand)
-        K_max=int(12 * np.max(np.abs(self.bounds)) / self.a)
+        # TODO: check whether we need complex vector
+        v_rand = 2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(
+            self.matrix.shape[0])*1j - 0.5 * (1 + 1j))
+        v_rand = v_rand/np.linalg.norm(v_rand)
+        K_max = int(12 * np.max(np.abs(self.bounds)) / self.a)
         vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
         return vec / np.linalg.norm(vec)
 
@@ -88,19 +88,19 @@ class DACP_reduction:
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
-        Kd = int(n*np.pi/a_r)
-        indices = np.arange(np.pi/a_r, (n+1)*np.pi/a_r, np.pi/a_r).astype(int)
-        v_proj=self.get_filtered_vector()
-        self.v_basis = chebyshev.basis(v_proj=v_proj, matrix=self.G_operator(), indices=indices)
-#         norm = np.linalg.norm(v_basis, axis=1)
-#         self.v_basis = v_basis/norm[:, np.newaxis]
+        n_array = np.arange(n).astype(int)
+        indicesp1 = n_array*(np.pi/a_r).astype(int)
+        indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
+        v_proj = self.get_filtered_vector()
+        self.v_basis = chebyshev.basis(
+            v_proj=v_proj, matrix=self.G_operator(), indices=indices)
 
     def get_subspace_matrix(self):
         self.span_basis()
         S = self.v_basis.conj() @ self.v_basis.T
         matrix_proj = self.v_basis.conj() @ self.matrix.dot(self.v_basis.T)
         s, V = eigh(S)
-        indx = np.abs(s)>1e-12
+        indx = np.abs(s) > 1e-12
         lambda_s = np.diag(1/np.sqrt(s[indx]))
         U = V[:, indx]@lambda_s
         self.subspace_matrix = U.T.conj() @ matrix_proj @ U
