@@ -75,21 +75,18 @@ class DACP_reduction:
     def estimate_subspace_dimenstion(self):
         dos_estimate = kwant.kpm.SpectralDensity(
             self.matrix,
-            energy_resolution=self.a,
+            energy_resolution=self.a/4,
             mean=True,
             bounds=self.bounds
         )
-
-#         step = lambda E: np.heaviside(E + self.a, 0) * np.heaviside(self.a - E, 0)
-#         return int(dos_estimate.integrate(step).real)
-        return int(2 * self.a * dos_estimate(0).real)
+        return int(np.abs(quad(dos_estimate, -a, a))[0])
 
     def span_basis(self):
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
-        n_array = np.arange(n).astype(int)
-        indicesp1 = n_array*(np.pi/a_r).astype(int)
+        n_array = np.arange(1, n+1, 1)
+        indicesp1 = (n_array*np.pi/a_r).astype(int)
         indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
         v_proj = self.get_filtered_vector()
         self.v_basis = chebyshev.basis(
