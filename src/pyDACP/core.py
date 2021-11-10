@@ -1,6 +1,7 @@
 from scipy.sparse.linalg import eigsh
 from scipy.sparse import eye
 from scipy.linalg import eigh
+import math
 from scipy.integrate import quad
 import kwant
 from . import chebyshev
@@ -87,7 +88,7 @@ class DACP_reduction:
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         # Divide by the number of random vectors
-        n = int(n/self.random_vectors)
+        n = math.ceil(n/self.random_vectors)
         a_r = self.a / np.max(np.abs(self.bounds))
         n_array = np.arange(1, n+1, 1)
         indicesp1 = (n_array*np.pi/a_r).astype(int)
