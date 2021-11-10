@@ -26,7 +26,7 @@ plt.show()
 # -
 
 # %%time
-dacp=core.DACP_reduction(H, a=0.2, eps=0.05, bounds=None, sampling_subspace=1.5)
+dacp=core.DACP_reduction(H, a=0.2, eps=0.05, bounds=None, sampling_subspace=1.5, random_vectors=4)
 
 true_eigvals, true_eigvecs = eig(H.todense())
 v_proj = dacp.get_filtered_vector()
@@ -74,3 +74,5 @@ plt.ylabel(r'$\log(E_n^{big} - E_n^{small})$')
 plt.xlabel(r'$E_n^{big}$')
 plt.xlim(-dacp.a, dacp.a)
 plt.show()
+
+

@@ -1,6 +1,7 @@
 from scipy.sparse.linalg import eigsh
 from scipy.sparse import eye
 from scipy.linalg import eigh
+from scipy.integrate import quad
 import kwant
 from . import chebyshev
 import numpy as np
@@ -8,7 +9,7 @@ import numpy as np
 
 class DACP_reduction:
 
-    def __init__(self, matrix, a, eps, bounds, sampling_subspace=1.5):
+    def __init__(self, matrix, a, eps, bounds, sampling_subspace=1.5, random_vectors=1):
         """Find the spectral bounds of a given matrix.
 
         Parameters
@@ -29,6 +30,7 @@ class DACP_reduction:
         else:
             self.find_bounds()
         self.sampling_subspace = sampling_subspace
+        self.random_vectors=random_vectors
 
     def find_bounds(self, method='sparse_diagonalization'):
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -79,18 +81,23 @@ class DACP_reduction:
             mean=True,
             bounds=self.bounds
         )
-        return int(np.abs(quad(dos_estimate, -a, a))[0])
+        return int(np.abs(quad(dos_estimate, -self.a, self.a))[0])
 
     def span_basis(self):
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
+        # Divide by the number of random vectors
+        n = int(n/self.random_vectors)
         a_r = self.a / np.max(np.abs(self.bounds))
         n_array = np.arange(1, n+1, 1)
         indicesp1 = (n_array*np.pi/a_r).astype(int)
         indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
-        v_proj = self.get_filtered_vector()
-        self.v_basis = chebyshev.basis(
-            v_proj=v_proj, matrix=self.G_operator(), indices=indices)
+        basis=[]
+        for i in range(self.random_vectors):
+            v_proj = self.get_filtered_vector()
+            basis.append(chebyshev.basis(
+                v_proj=v_proj, matrix=self.G_operator(), indices=indices))
+        self.v_basis=np.concatenate(np.asarray(basis))
 
     def get_subspace_matrix(self):
         self.span_basis()
