@@ -10,7 +10,7 @@ import numpy as np
 
 class DACP_reduction:
 
-    def __init__(self, matrix, a, eps, bounds, sampling_subspace=1.5, random_vectors=1):
+    def __init__(self, matrix, a, eps, bounds, sampling_subspace=1.5, max_iter=1e2, deg_tresh=1e-5):
         """Find the spectral bounds of a given matrix.
 
         Parameters
@@ -31,7 +31,8 @@ class DACP_reduction:
         else:
             self.find_bounds()
         self.sampling_subspace = sampling_subspace
-        self.random_vectors=random_vectors
+        self.max_iter = int(max_iter)
+        self.deg_tresh = deg_tresh
 
     def find_bounds(self, method='sparse_diagonalization'):
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -84,29 +85,37 @@ class DACP_reduction:
         )
         return int(np.abs(quad(dos_estimate, -self.a, self.a))[0])
 
-    def span_basis(self):
+    def span_basis(self, v_proj):
         d = self.estimate_subspace_dimenstion()
-        n = int(np.abs((d*self.sampling_subspace - 1)/2))
-        # Divide by the number of random vectors
-        n = math.ceil(n/self.random_vectors)
+        n = math.ceil(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
         n_array = np.arange(1, n+1, 1)
         indicesp1 = (n_array*np.pi/a_r).astype(int)
         indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
-        basis=[]
-        for i in range(self.random_vectors):
-            v_proj = self.get_filtered_vector()
-            basis.append(chebyshev.basis(
-                v_proj=v_proj, matrix=self.G_operator(), indices=indices))
-        self.v_basis=np.concatenate(np.asarray(basis))
-
-    def get_subspace_matrix(self):
-        self.span_basis()
-        S = self.v_basis.conj() @ self.v_basis.T
-        matrix_proj = self.v_basis.conj() @ self.matrix.dot(self.v_basis.T)
+        return chebyshev.basis(v_proj=v_proj, matrix=self.G_operator(), indices=indices)
+        
+    def get_orthogonal_basis(self, v_proj):
+        v_basis = self.span_basis(v_proj)
+        S = v_basis.conj() @ v_basis.T
         s, V = eigh(S)
         indx = np.abs(s) > 1e-12
         lambda_s = np.diag(1/np.sqrt(s[indx]))
         U = V[:, indx]@lambda_s
-        self.subspace_matrix = U.T.conj() @ matrix_proj @ U
-        return self.subspace_matrix
+        return U.T.conj()@v_basis
+
+    def get_subspace_matrix(self):
+        v = self.get_filtered_vector()
+        U = self.get_orthogonal_basis(v)
+
+        for i in range(self.max_iter):
+            v = self.get_filtered_vector()
+            v = v - U.T@U.conj()@v
+
+            if np.abs(np.sum(v)) < self.deg_tresh:
+                break
+
+            U_inc = self.get_orthogonal_basis(v)
+            U = np.concatenate((U, U_inc), axis=0)
+
+        H_red = U.conj()@self.matrix@U.T
+        return H_red
