@@ -37,7 +37,7 @@ from pyDACP import core, chebyshev
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
-from scipy.linalg import eigh, eig
+from scipy.linalg import eigh, eig, eigvalsh
 from scipy.sparse import diags, eye
 from scipy.sparse.linalg import eigsh
 
@@ -142,6 +142,53 @@ plt.show()
 # This method works fine if there are no degeneracies. For degenerate states, however, we get a single eigenstate. The way to work around this problem is to first use as many random vectors as there are degenerate states. Since random vectors are in general linearly independent, they should lead to different degenerate states. 
 #
 # However, "in general" is not as formal as we wanted it to be. So ideally we want to make sure the random vectors are actually orthogonal. And it turns out that this is painful.
+#
+# But let's see how it goes anyway.
+
+# +
+import kwant
+
+a, t = 1, 1
+mu=0
+L = 15
+
+lat = kwant.lattice.honeycomb(a, norbs=1)
+
+syst = kwant.Builder()
+
+# Define the quantum dot
+def circle(pos):
+    (x, y) = pos
+    return (-L < x < L) and (-L < y < L)
+
+syst[lat.shape(circle, (0, 0))] = - mu
+# hoppings in x-direction
+syst[lat.neighbors()] = -t
+# hoppings in y-directions
+syst[lat.neighbors()] = -t
+
+fsyst=syst.finalized()
+
+kwant.plot(syst)
+plt.show()
+# -
+
+# %%time
+H=fsyst.hamiltonian_submatrix(sparse=True)
+dacp=core.DACP_reduction(H, a=0.2, eps=0.05, random_vectors=1)
+
+# %%time
+ham_red=dacp.get_subspace_matrix()
+
+evals = eigvalsh(ham_red)
+n=np.arange(-evals.shape[0]/2, evals.shape[0]/2)
+true_vals = eigvalsh(H.todense())
+plt.scatter(n, evals, c='k')
+n_true=np.arange(-true_vals.shape[0]/2, true_vals.shape[0]/2)
+plt.scatter(n_true, true_vals, c='r', s=4)
+plt.xlim(-20, 20)
+plt.ylim(-dacp.a, dacp.a)
+plt.show()
 
 # ### Gram-Schmidt othogonalization
 #
