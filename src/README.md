@@ -2,38 +2,32 @@
 
 ### Why to even care?
 
-Do you work with:
-* Systems with large Hamiltonains?
-* Interested only within a small energy window?
+Do you work with: \* Systems with large Hamiltonains? \* Interested only
+within a small energy window?
 
-Then DACP is perfect for you: the idea is to span the low-energy subspace with two applications of Chebyshev polynomials. So if you original Hamiltonian had $n$ states and within the small window there are only $m$ states, you only have to diagonalize an $m\times m$ matrix.
-
+Then DACP is perfect for you: the idea is to span the low-energy
+subspace with two applications of Chebyshev polynomials. So if you
+original Hamiltonian had *n* states and within the small window there
+are only *m* states, you only have to diagonalize an *m* × *m* matrix.
 
 ### First application of Chebyshev polynomials
 
-We write an arbitrary vector in terms of the eigenvectors of the Hamiltonian $\mathcal{H}$:
-\begin{equation}
-|r\rangle = \sum_{E_i \in [-a, a]} \alpha_i |\psi_i\rangle + \sum_{E_i \notin [-a, a]} \beta_i |\phi_i\rangle.
-\end{equation}
+We write an arbitrary vector in terms of the eigenvectors of the
+Hamiltonian ℋ:
 
-The idea now is to obtain an energy-filtered vector $|r_E\rangle$ by removing the second term of the equation above. To do so, we define the operator
-\begin{equation}
-\mathcal{F} := \frac{\mathcal{H}^2 - E_c}{E_0}
-\end{equation}
-with $E_c = E_{max}^2 + a^2$, and $E_0 = E_{max}^2 - a^2$.
+The idea now is to obtain an energy-filtered vector \|*r*<sub>*E*</sub>⟩
+by removing the second term of the equation above. To do so, we define
+the operator with
+*E*<sub>*c*</sub> = *E*<sub>*m**a**x*</sub><sup>2</sup> + *a*<sup>2</sup>,
+and
+*E*<sub>0</sub> = *E*<sub>*m**a**x*</sub><sup>2</sup> − *a*<sup>2</sup>.
 
-For a large enough $k$, the $k$-th order Chebyshev polynomial of $\mathcal{F}$ is
-\begin{equation}
-T_k(\mathcal{F}) \approx e^{\frac{2k}{E_{max}}\sqrt{a^2 - \mathcal{H}^2}},
-\end{equation}
-which indeed filters states within the $[-a, a]$ window. So,
-\begin{equation}
-T_k(\mathcal{F})|r\rangle = |r_E\rangle.
-\end{equation}
+For a large enough *k*, the *k*-th order Chebyshev polynomial of ℱ is
+which indeed filters states within the \[−*a*,*a*\] window. So,
 
-Let's see an example!
+Let’s see an example!
 
-```python
+``` python
 from pyDACP import core, chebyshev
 import matplotlib.pyplot as plt
 from matplotlib import rc
@@ -43,7 +37,7 @@ from scipy.sparse import diags, eye
 from scipy.sparse.linalg import eigsh
 ```
 
-```python
+``` python
 rc("font", **{"family": "sans-serif", "sans-serif": ["Helvetica"]})
 rc("text", usetex=True)
 plt.rcParams["figure.figsize"] = (4, 3)
@@ -52,7 +46,7 @@ plt.rcParams["font.size"] = 16
 plt.rcParams["legend.fontsize"] = 16
 ```
 
-```python
+``` python
 N = 1000
 np.random.seed(1)
 c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
@@ -64,18 +58,18 @@ plt.matshow(H.toarray().real, cmap='bwr', vmin=-1, vmax=1)
 plt.show()
 ```
 
-```python
+``` python
 %%time
 dacp=core.DACP_reduction(H, a=0.2, eps=0.05)
 ```
 
-```python
+``` python
 %%time
 true_eigvals, true_eigvecs = eig(H.todense())
 v_proj = dacp.get_filtered_vector()
 ```
 
-```python
+``` python
 plt.scatter(np.real(true_eigvals), np.log(np.abs(true_eigvecs.T.conj()@v_proj)), c='k')
 plt.xlim(-3*dacp.a, 3*dacp.a)
 plt.axvline(-dacp.a, ls='--', c='k')
@@ -87,45 +81,49 @@ plt.show()
 
 ### Second application of Chebyshev polynomials: the Chebyshev evolution
 
-Now we have one single vector $|r_E\rangle$ within the energy window we want. And we use again Chebyshev polynomials to span the full basis of the subspace $\mathbb{L}$ with $E \in [-a, a]$. For that, we define a second operator, $\mathcal{G}$, which is simply the rescaled Hamiltonian such that all eigenvalues are within $[-1, 1]$:
-\begin{equation}
-\mathcal{G} = \frac{\mathcal{H} - E_c'}{E_0'}
-\end{equation}
-with $E'_c = (E_{max} + E_{min})/2$, and $E'_0 = (E_{max} - E_{min})/2$.
+Now we have one single vector \|*r*<sub>*E*</sub>⟩ within the energy
+window we want. And we use again Chebyshev polynomials to span the full
+basis of the subspace 𝕃 with *E* ∈ \[−*a*,*a*\]. For that, we define a
+second operator, 𝒢, which is simply the rescaled Hamiltonian such that
+all eigenvalues are within \[−1,1\]: with
+*E*′<sub>*c*</sub> = (*E*<sub>*m**a**x*</sub>+*E*<sub>*m**i**n*</sub>)/2,
+and
+*E*′<sub>0</sub> = (*E*<sub>*m**a**x*</sub>−*E*<sub>*m**i**n*</sub>)/2.
 
-A full basis is then simply:
-\begin{equation}
-\left\lbrace I, \sin(X), \cdots, \sin(nX), \cos(X), \cdots, \cos(nX)\right\rbrace |r_E\rangle.
-\end{equation}
-with $X:=\pi\mathcal{G}/a_r$, and $a_r = a/\max(|E_{max}|, |E_{min}|)$.
+A full basis is then simply: with *X* := *π*𝒢/*a*<sub>*r*</sub>, and
+*a*<sub>*r*</sub> = *a*/max (\|*E*<sub>*m**a**x*</sub>\|,\|*E*<sub>*m**i**n*</sub>\|).
 
-In fact, we can span the basis above by, instead of computing $\sin$ and $\cos$ of a matrix, computing simply several Chebyshev **polynomials** of $\mathcal{G}$.
+In fact, we can span the basis above by, instead of computing sin  and
+cos  of a matrix, computing simply several Chebyshev **polynomials** of
+𝒢.
 
-The remaininig problem is that we don't know the value of $n$, so we must (over)estimate the dimension of this subspace. And guess what: we use **again** Chebyshev polynomials by performing a low-resolution KPM. Since we overestimate the dimension, we also want to get rid of linearly dependent vectors, so we do SVD.
+The remaininig problem is that we don’t know the value of *n*, so we
+must (over)estimate the dimension of this subspace. And guess what: we
+use **again** Chebyshev polynomials by performing a low-resolution KPM.
+Since we overestimate the dimension, we also want to get rid of linearly
+dependent vectors, so we do SVD.
 
-The final set of vectors $\lbrace \psi_k \rbrace$ is then used to compute the projected low-energy Hamiltonian:
-\begin{equation}
-H_{\text{eff}}^{ij} = \langle \psi_i |\mathcal{H}|\psi_j\rangle.
-\end{equation}
+The final set of vectors {*ψ*<sub>*k*</sub>} is then used to compute the
+projected low-energy Hamiltonian:
 
-Let's see how good this Hamiltonian is:
+Let’s see how good this Hamiltonian is:
 
-```python
+``` python
 %%time
 ham_red=dacp.get_subspace_matrix()
 ```
 
-```python
+``` python
 plt.matshow(ham_red.real, vmin=-.1, vmax=.1, cmap='bwr')
 plt.show()
 ```
 
-```python
+``` python
 %%time
 red_eigvals, red_eigvecs = eig(ham_red)
 ```
 
-```python
+``` python
 # This part is quite unstable.
 # Half of the bandwidth
 half_bandwidth=np.max(np.abs(true_eigvals))
@@ -139,7 +137,7 @@ indx=indx1 * indx2
 window_eigvals=true_eigvals[indx]
 ```
 
-```python
+``` python
 plt.plot(np.sort(window_eigvals), np.sort(red_eigvals), '-o', c='k')
 plt.xlabel(r'$E_n^{big}$')
 plt.ylabel(r'$E_n^{small}$')
@@ -148,7 +146,7 @@ plt.ylim(-dacp.a, dacp.a)
 plt.show()
 ```
 
-```python
+``` python
 # res=np.sort(red_eigvals).copy()[:window_eigvals.shape[0]]
 # res-=np.sort(window_eigvals)
 res=np.sort(red_eigvals)-np.sort(window_eigvals)
@@ -161,13 +159,19 @@ plt.show()
 
 ## The degeneracy problem and next steps
 
-This method works fine if there are no degeneracies. For degenerate states, however, we get a single eigenstate. The way to work around this problem is to first use as many random vectors as there are degenerate states. Since random vectors are in general linearly independent, they should lead to different degenerate states. 
+This method works fine if there are no degeneracies. For degenerate
+states, however, we get a single eigenstate. The way to work around this
+problem is to first use as many random vectors as there are degenerate
+states. Since random vectors are in general linearly independent, they
+should lead to different degenerate states.
 
-However, "in general" is not as formal as we wanted it to be. So ideally we want to make sure the random vectors are actually orthogonal. And it turns out that this is painful.
+However, “in general” is not as formal as we wanted it to be. So ideally
+we want to make sure the random vectors are actually orthogonal. And it
+turns out that this is painful.
 
-But let's see how it goes anyway.
+But let’s see how it goes anyway.
 
-```python
+``` python
 import kwant
 
 a, t = 1, 1
@@ -195,18 +199,18 @@ kwant.plot(syst)
 plt.show()
 ```
 
-```python
+``` python
 %%time
 H=fsyst.hamiltonian_submatrix(sparse=True)
 dacp=core.DACP_reduction(H, a=0.2, eps=0.05, random_vectors=15)
 ```
 
-```python
+``` python
 %%time
 ham_red=dacp.get_subspace_matrix()
 ```
 
-```python
+``` python
 evals = eigvalsh(ham_red)
 n=np.arange(-evals.shape[0]/2, evals.shape[0]/2)
 true_vals = eigvalsh(H.todense())
@@ -222,13 +226,13 @@ plt.show()
 
 ### Gram-Schmidt othogonalization
 
-A simple way to perform this orthogonalization is via Gram-Schmidt method. Say we already collected $m$ vectors after the first Chebyshev evolution, and let's assume all of them are orthogonal. And then we generate a second random vector $|r_2\rangle$. Then we orthogonalize it by simply computing:
-\begin{equation}
-|r_2^{\perp}\rangle = |r_2\rangle - \sum_{k=1}^{m} \langle \psi_k |r_2\rangle |\psi_k\rangle.
-\end{equation}
+A simple way to perform this orthogonalization is via Gram-Schmidt
+method. Say we already collected *m* vectors after the first Chebyshev
+evolution, and let’s assume all of them are orthogonal. And then we
+generate a second random vector \|*r*<sub>2</sub>⟩. Then we
+orthogonalize it by simply computing:
 
 This method is, however, unstable: the error is too large.
-
 
 ### QR decomposition with Householder reflections
 
@@ -236,41 +240,58 @@ A stable method is orthogonalization via Householder reflections.
 
 #### Householder reflections
 
-Say you have an arbitrary $n$-dimensional vector $|x_1\rangle$, and you want to make a reflection via an operator $H_1$ on it such that $H_1|x_1\rangle = e_1$. Thus, you only have to find the vector $|v\rangle$ perpendicular to plane for this reflection, and then:
-$$
-H_1 = I - |v\rangle \langle v|.
-$$
+Say you have an arbitrary *n*-dimensional vector \|*x*<sub>1</sub>⟩, and
+you want to make a reflection via an operator *H*<sub>1</sub> on it such
+that *H*<sub>1</sub>\|*x*<sub>1</sub>⟩ = *e*<sub>1</sub>. Thus, you only
+have to find the vector \|*v*⟩ perpendicular to plane for this
+reflection, and then:
+*H*<sub>1</sub> = *I* − \|*v*⟩⟨*v*\|.
 
 #### QR decomposition
 
-The QR decomposition is a decomposition of a matrix $A$ as $A = QR$, where $Q$ is an unitary matrix and $R$ is an upper triangular matrix. We can actually go from $A$ to $R$ by performing a sucession of Householder reflections:
-* Write $A$ as a sequence of vectors: $A = [|x_1\rangle, |x_2\rangle, \cdots, |x_m\rangle]$.
-* Perform a Householder reflection for $|x_1\rangle$, so $H_1 A = [e_1, H_1|x_2\rangle, \cdots, H_1|x_m\rangle]$.
-* Perform a Householder reflection $\tilde{H}_2$ in the last $n-1$ components of $|x_2\rangle$, such that:
+The QR decomposition is a decomposition of a matrix *A* as *A* = *Q**R*,
+where *Q* is an unitary matrix and *R* is an upper triangular matrix. We
+can actually go from *A* to *R* by performing a sucession of Householder
+reflections: \* Write *A* as a sequence of vectors:
+*A* = \[\|*x*<sub>1</sub>⟩,\|*x*<sub>2</sub>⟩,⋯,\|*x*<sub>*m*</sub>⟩\].
+\* Perform a Householder reflection for \|*x*<sub>1</sub>⟩, so
+*H*<sub>1</sub>*A* = \[*e*<sub>1</sub>,*H*<sub>1</sub>\|*x*<sub>2</sub>⟩,⋯,*H*<sub>1</sub>\|*x*<sub>*m*</sub>⟩\].
+\* Perform a Householder reflection *H̃*<sub>2</sub> in the last *n* − 1
+components of \|*x*<sub>2</sub>⟩, such that:
 $$
-H_2 H_1 A = \left[ \begin{array}{cccc}
-1 & H_1|x_2\rangle & \ & \ \\
-0 & 1 & \cdots & H_2 H_1|x_m\rangle \\
-0 & 0 & \ & \ \\
-\vdots & \vdots & \ddots & \vdots 
-\end{array} \right]
+H_2 H_1 A = \\left\[ \\begin{array}{cccc}
+1 & H_1\|x_2\\rangle & \\ & \\ \\\\
+0 & 1 & \\cdots & H_2 H_1\|x_m\\rangle \\\\
+0 & 0 & \\ & \\ \\\\
+\\vdots & \\vdots & \\ddots & \\vdots 
+\\end{array} \\right\]
 $$
-* If all the vectors are linearly independent, we end up with a upper triangular matrix after performing these rotations $m$ times. Therefore,
-$$
-A = QR = (H_m \cdots H_1)^{\dagger} R.
-$$
+\* If all the vectors are linearly independent, we end up with a upper
+triangular matrix after performing these rotations *m* times. Therefore,
+*A* = *Q**R* = (*H*<sub>*m*</sub>⋯*H*<sub>1</sub>)<sup>†</sup>*R*.
 
-Since $Q$ is unitary, we get an orthogonal basis.
+Since *Q* is unitary, we get an orthogonal basis.
 
 #### Our workflow
 
-At each step of the Chebyshev evolution, we get a vector $|\psi_k\rangle$, which we Household reflect and generate $Q^{\dagger}$. Then we go to the next evolution step, and compute $Q^{\dagger}|\psi_{k+1}\rangle$. If all the last $m-(k+1)$ components of this vector are zero, we know this vector is linearly dependent to the previous ones. Then we stop the evolution. Otherwise, we go to the next step.
+At each step of the Chebyshev evolution, we get a vector
+\|*ψ*<sub>*k*</sub>⟩, which we Household reflect and generate
+*Q*<sup>†</sup>. Then we go to the next evolution step, and compute
+*Q*<sup>†</sup>\|*ψ*<sub>*k* + 1</sub>⟩. If all the last *m* − (*k*+1)
+components of this vector are zero, we know this vector is linearly
+dependent to the previous ones. Then we stop the evolution. Otherwise,
+we go to the next step.
 
-When we stop the evolution (at step $m$), we collect `Q.T.conj()[:, :m]`, which is the current basis. Then ensure the next random vector is within the orthogonal complement of this basis and keep going until there are no more degeneracies.
+When we stop the evolution (at step *m*), we collect
+`Q.T.conj()[:, :m]`, which is the current basis. Then ensure the next
+random vector is within the orthogonal complement of this basis and keep
+going until there are no more degeneracies.
 
 #### How to know there are no more degeneracies?
 
-* Start with 2 perpendicular random vectors.
-* See whether they lead to degenerate states.
-* If so, add one more vector, and check if there are 3-fold degeneracies.
-* Go on until at step $n$ the filtered vector in the orthogonal complement of the current basis is the null vector.
+-   Start with 2 perpendicular random vectors.
+-   See whether they lead to degenerate states.
+-   If so, add one more vector, and check if there are 3-fold
+    degeneracies.
+-   Go on until at step *n* the filtered vector in the orthogonal
+    complement of the current basis is the null vector.
