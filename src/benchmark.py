@@ -2,12 +2,16 @@ import kwant
 import kwant.linalg.mumps as mumps
 from pyDACP import core, chebyshev
 import time
-from scipy.linalg import eigvalsh
+from scipy.linalg import eigh
 import scipy.sparse.linalg as sla
 from scipy.sparse import identity
 import numpy as np
 import matplotlib.pyplot as plt
 from memory_profiler import memory_usage
+from itertools import product
+from tqdm import tqdm
+import itertools as it
+import xarray as xr
 
 # +
 t = 1
@@ -73,8 +77,8 @@ def benchmark(N, seed, dimension):
     d = dacp.estimate_subspace_dimenstion()
 
     def sparse_benchmark():
-        _ = sparse_diag(H, sigma=0, k=int(
-            dacp.sampling_subspace*d), which='LM', return_eigenvectors=False)
+        _, _ = sparse_diag(H, sigma=0, k=int(
+            dacp.sampling_subspace*d), which='LM')
     start_time = time.time()
     sparse_memory=memory_usage(sparse_benchmark, max_usage=True)
     sparse_time=time.time() - start_time
@@ -83,7 +87,7 @@ def benchmark(N, seed, dimension):
 
     def dacp_benchmark():
         dacp = core.DACP_reduction(H, a=0.2, eps=0.05)
-        _ = eigvalsh(dacp.get_subspace_matrix())
+        _, _ = eigh(dacp.get_subspace_matrix())
     start_time = time.time()
     dacp_memory=memory_usage(dacp_benchmark, max_usage=True)
     dacp_time=time.time() - start_time
@@ -93,12 +97,68 @@ def benchmark(N, seed, dimension):
     return sparse_data, dacp_data
 
 
-benchmark(1e3, 1, 2)
+# +
+params = {
+    'N' : np.arange(1000, 11000, 100),
+    'seeds' : np.linspace(1, 10, 5),
+    'dimensions' : [2,3]
 
-benchmark(5e2, 1, 3)
+}
 
-seeds=np.linspace(1, 10, 10)
-dimensions=[2, 3]
-Ns=np.linspace(1e2, 5e3)
+values = list(params.values())
+args = np.array(list(it.product(*values)))
+
+args = tqdm(args)
+
+def wrapped_fn(args):
+    a, b = benchmark(*args)
+    return *a, *b
+
+result = list(map(wrapped_fn, args))
+# -
+
+shapes = [len(values[i]) for i in range(len(values))]
+shapes = [*shapes, 4]
+shaped_data = np.reshape(result, shapes)
+
+shaped_data = np.reshape(result, shapes)
+da = xr.DataArray(
+    data=shaped_data,
+    dims=[*params.keys(), 'output'],
+    coords={
+        **params,
+        'output': ['sparsetime', 'sparsemem', 'dacptime', 'dacpmem']
+    }
+)
+
+da_mean=da.mean(dim='seeds')
+
+import matplotlib.pyplot as plt
+from matplotlib import rc
+rc('text', usetex=True)
+plt.rcParams['figure.figsize'] = (6, 6)
+plt.rcParams['lines.linewidth'] = 2
+plt.rcParams['font.size'] = 15
+plt.rcParams['legend.fontsize'] = 15
+
+da_mean.sel(dimensions=2).sel(output=['dacptime', 'sparsetime']).plot(hue='output')
+plt.tight_layout()
+plt.savefig('time_2d.png')
+plt.show()
+
+da_mean.sel(dimensions=2).sel(output=['dacpmem', 'sparsemem']).plot(hue='output')
+plt.tight_layout()
+plt.savefig('mem_2d.png')
+plt.show()
+
+da_mean.sel(dimensions=3).sel(output=['dacptime', 'sparsetime']).plot(hue='output')
+plt.tight_layout()
+plt.savefig('time_3d.png')
+plt.show()
+
+da_mean.sel(dimensions=3).sel(output=['dacpmem', 'sparsemem']).plot(hue='output')
+plt.tight_layout()
+plt.savefig('mem_3d.png')
+plt.show()
 
 
