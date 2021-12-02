@@ -83,6 +83,61 @@ class DACP_reduction:
         )
         return int(np.abs(quad(dos_estimate, -self.a, self.a))[0])
 
+    def direct_eigenvalues(self):
+        d = self.estimate_subspace_dimenstion()
+        n = int(np.abs((d*self.sampling_subspace - 1)/2))
+        a_r = self.a / np.max(np.abs(self.bounds))
+        n_array = np.arange(1, n+1, 1)
+        indices = (n_array*np.pi/a_r).astype(int)
+        indices_to_store = np.sort(np.array([*indices+1, *indices, *indices-1, *indices-2, 0, 1, 2]))
+
+        S = np.zeros((n, n), dtype=np.complex128)
+        H = np.zeros((n, n), dtype=np.complex128)
+        v_proj = self.get_filtered_vector()
+        S_xy, H_xy = chebyshev.basis_no_store(v_proj=v_proj, matrix=self.G_operator(), H = self.matrix, indices_to_store=indices_to_store)
+
+        # def ijselector(i, j):
+        #     dk = np.pi / a_r
+        #     if i % 2 == 0 and j % 2 == 0:
+        #         k_p = int(dk * i / 2) + int(dk * j / 2) - 2
+        #         k_m = abs(int(dk * i / 2) - int(dk * j / 2))
+        #     elif i % 2 == 1 and j % 2 == 0:
+        #         k_p = int(dk * (i - 1) / 2) + int(dk * j / 2) - 1
+        #         k_m = abs(int(dk * (i - 1) / 2) - int(dk * j / 2) + 1)
+        #     elif i % 2 == 0 and j % 2 == 1:
+        #         k_p = int(dk * i / 2) - 1 + int(dk * (j - 1) / 2)
+        #         k_m = abs(int(dk * i / 2) - 1 - int(dk * (j - 1) / 2))
+        #     else:
+        #         k_p = int(dk * (i - 1) / 2) + int(dk * (j - 1) / 2)
+        #         k_m = abs(int(dk * (i - 1) / 2) - int(dk * (j - 1) / 2))
+        #     return k_p, k_m
+
+        def ijselector(i, j):
+            dk = np.pi / a_r
+            if i % 2 == 0 and j % 2 == 0:
+                k_p = int(dk * i / 2 + dk * j / 2 - 2)
+                k_m = abs(int(dk * i / 2 - dk * j / 2))
+            elif i % 2 == 1 and j % 2 == 0:
+                k_p = int(dk * (i - 1) / 2 + dk * j / 2 - 1)
+                k_m = abs(int(dk * (i - 1) / 2 - dk * j / 2 + 1))
+            elif i % 2 == 0 and j % 2 == 1:
+                k_p = int(dk * i / 2 - 1 + dk * (j - 1) / 2)
+                k_m = abs(int(dk * i / 2 - 1 - dk * (j - 1) / 2))
+            else:
+                k_p = int(dk * (i - 1) / 2 + dk * (j - 1) / 2)
+                k_m = abs(int(dk * (i - 1) / 2 - dk * (j - 1) / 2))
+            return k_p, k_m
+
+        for i in range(n):
+            for j in range(n):
+                x, y = ijselector(i+1, j+1)
+                ind_p = np.where(indices_to_store == x)[0][0]
+                ind_m = np.where(indices_to_store == y)[0][0]
+                S[i, j] = 0.5 * (S_xy[ind_p] + S_xy[ind_m])
+                H[i, j] = 0.5 * (H_xy[ind_p] + H_xy[ind_m])
+
+        return S, H
+
     def span_basis(self):
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
