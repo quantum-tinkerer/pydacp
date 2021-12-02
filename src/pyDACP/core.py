@@ -5,6 +5,7 @@ from scipy.integrate import quad
 import kwant
 from . import chebyshev
 import numpy as np
+from math import floor
 
 
 class DACP_reduction:
@@ -30,7 +31,7 @@ class DACP_reduction:
         else:
             self.find_bounds()
         self.sampling_subspace = sampling_subspace
-        self.random_vectors=random_vectors
+        self.random_vectors = random_vectors
 
     def find_bounds(self, method='sparse_diagonalization'):
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -85,48 +86,41 @@ class DACP_reduction:
 
     def direct_eigenvalues(self):
         d = self.estimate_subspace_dimenstion()
-        n = int(np.abs((d*self.sampling_subspace - 1)/2))
+        # Needed factor of 2 here
+        n = 2 * int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
+        dk = np.pi / a_r
         n_array = np.arange(1, n+1, 1)
-        indices = (n_array*np.pi/a_r).astype(int)
-        indices_to_store = np.sort(np.array([*indices+1, *indices, *indices-1, *indices-2, 0, 1, 2]))
+        indices = np.floor(n_array * dk).astype(int)
+        indices_to_store = np.unique(
+            np.array([0, 1, *indices-2, *indices-1, *indices, *indices+1])
+        ).astype(int)
+
+        v_proj = self.get_filtered_vector()
+
+        S_xy, H_xy = chebyshev.basis_no_store(
+            v_proj=v_proj,
+            matrix=self.G_operator(),
+            H=self.matrix,
+            indices_to_store=indices_to_store
+        )
+
+        def transform(i):
+            if i % 2:
+                ki = dk * (i - 1) / 2
+            else:
+                ki = dk * i / 2 - 1
+            return ki
+
+        def ijselector(i, j):
+            ki = transform(i)
+            kj = transform(j)
+            k_p = ki + kj
+            k_m = ki - kj
+            return int(floor(k_p)), int(floor(abs(k_m)))
 
         S = np.zeros((n, n), dtype=np.complex128)
         H = np.zeros((n, n), dtype=np.complex128)
-        v_proj = self.get_filtered_vector()
-        S_xy, H_xy = chebyshev.basis_no_store(v_proj=v_proj, matrix=self.G_operator(), H = self.matrix, indices_to_store=indices_to_store)
-
-        # def ijselector(i, j):
-        #     dk = np.pi / a_r
-        #     if i % 2 == 0 and j % 2 == 0:
-        #         k_p = int(dk * i / 2) + int(dk * j / 2) - 2
-        #         k_m = abs(int(dk * i / 2) - int(dk * j / 2))
-        #     elif i % 2 == 1 and j % 2 == 0:
-        #         k_p = int(dk * (i - 1) / 2) + int(dk * j / 2) - 1
-        #         k_m = abs(int(dk * (i - 1) / 2) - int(dk * j / 2) + 1)
-        #     elif i % 2 == 0 and j % 2 == 1:
-        #         k_p = int(dk * i / 2) - 1 + int(dk * (j - 1) / 2)
-        #         k_m = abs(int(dk * i / 2) - 1 - int(dk * (j - 1) / 2))
-        #     else:
-        #         k_p = int(dk * (i - 1) / 2) + int(dk * (j - 1) / 2)
-        #         k_m = abs(int(dk * (i - 1) / 2) - int(dk * (j - 1) / 2))
-        #     return k_p, k_m
-
-        def ijselector(i, j):
-            dk = np.pi / a_r
-            if i % 2 == 0 and j % 2 == 0:
-                k_p = int(dk * i / 2 + dk * j / 2 - 2)
-                k_m = abs(int(dk * i / 2 - dk * j / 2))
-            elif i % 2 == 1 and j % 2 == 0:
-                k_p = int(dk * (i - 1) / 2 + dk * j / 2 - 1)
-                k_m = abs(int(dk * (i - 1) / 2 - dk * j / 2 + 1))
-            elif i % 2 == 0 and j % 2 == 1:
-                k_p = int(dk * i / 2 - 1 + dk * (j - 1) / 2)
-                k_m = abs(int(dk * i / 2 - 1 - dk * (j - 1) / 2))
-            else:
-                k_p = int(dk * (i - 1) / 2 + dk * (j - 1) / 2)
-                k_m = abs(int(dk * (i - 1) / 2 - dk * (j - 1) / 2))
-            return k_p, k_m
 
         for i in range(n):
             for j in range(n):
@@ -147,12 +141,12 @@ class DACP_reduction:
         n_array = np.arange(1, n+1, 1)
         indicesp1 = (n_array*np.pi/a_r).astype(int)
         indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
-        basis=[]
+        basis = []
         for i in range(self.random_vectors):
             v_proj = self.get_filtered_vector()
             basis.append(chebyshev.basis(
                 v_proj=v_proj, matrix=self.G_operator(), indices=indices))
-        self.v_basis=np.concatenate(np.asarray(basis))
+        self.v_basis = np.concatenate(np.asarray(basis))
 
     def get_subspace_matrix(self):
         self.span_basis()
