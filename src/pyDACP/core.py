@@ -5,7 +5,7 @@ from scipy.integrate import quad
 import kwant
 from . import chebyshev
 import numpy as np
-from math import floor
+from math import floor, ceil
 
 
 class DACP_reduction:
@@ -86,15 +86,11 @@ class DACP_reduction:
 
     def direct_eigenvalues(self):
         d = self.estimate_subspace_dimenstion()
-        # Needed factor of 2 here
-        n = 2 * int(np.abs((d*self.sampling_subspace - 1)/2))
+        n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
         dk = np.pi / a_r
-        n_array = np.arange(1, n+1, 1)
-        indices = np.floor(n_array * dk).astype(int)
-        indices_to_store = np.unique(
-            np.array([0, 1, *indices-2, *indices-1, *indices, *indices+1])
-        ).astype(int)
+        Kmax=int(dk*2*(n+1))
+        indices_to_store = np.arange(0, Kmax+1, 1)
 
         v_proj = self.get_filtered_vector()
 
@@ -102,31 +98,21 @@ class DACP_reduction:
             v_proj=v_proj,
             matrix=self.G_operator(),
             H=self.matrix,
-            indices_to_store=indices_to_store
+            Kmax=Kmax
         )
 
-        def transform(i):
-            if i % 2:
-                ki = dk * (i - 1) / 2
-            else:
-                ki = dk * i / 2 - 1
-            return ki
-
-        def ijselector(i, j):
-            ki = transform(i)
-            kj = transform(j)
-            k_p = ki + kj
-            k_m = ki - kj
-            return int(floor(k_p)), int(floor(abs(k_m)))
-
-        S = np.zeros((n, n), dtype=np.complex128)
-        H = np.zeros((n, n), dtype=np.complex128)
-
-        for i in range(n):
-            for j in range(n):
-                x, y = ijselector(i+1, j+1)
-                ind_p = np.where(indices_to_store == x)[0][0]
-                ind_m = np.where(indices_to_store == y)[0][0]
+        n_array = np.arange(1, n+1, 1)
+        indices = np.floor(n_array * dk)
+        ks = np.unique(np.array([0, *indices, *indices-1])).astype(int)
+        m = len(ks)
+        S = np.zeros((m, m), dtype=complex)
+        H = np.zeros((m, m), dtype=complex)
+        for i, x in enumerate(ks):
+            for j, y in enumerate(ks):
+                xpy = int(x + y)
+                xmy = int(abs(x - y))
+                ind_p = np.where(indices_to_store == xpy)[0][0]
+                ind_m = np.where(indices_to_store == xmy)[0][0]
                 S[i, j] = 0.5 * (S_xy[ind_p] + S_xy[ind_m])
                 H[i, j] = 0.5 * (H_xy[ind_p] + H_xy[ind_m])
 
@@ -136,11 +122,12 @@ class DACP_reduction:
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         # Divide by the number of random vectors
-        n = int(n/self.random_vectors)
+        n = int(n/int(self.random_vectors))
         a_r = self.a / np.max(np.abs(self.bounds))
         n_array = np.arange(1, n+1, 1)
-        indicesp1 = (n_array*np.pi/a_r).astype(int)
-        indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
+        dk = np.pi / a_r
+        indicesp1 = (n_array * dk)
+        indices = np.unique(np.array([0, *indicesp1, *indicesp1-1])).astype(int)
         basis = []
         for i in range(self.random_vectors):
             v_proj = self.get_filtered_vector()
