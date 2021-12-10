@@ -89,8 +89,17 @@ class DACP_reduction:
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
         dk = np.pi / a_r
-        Kmax=int(dk*2*(n+1))
-        indices_to_store = np.arange(0, Kmax, 1)
+        n_array_1 = np.arange(1, 2*n+1, 1)
+        indices_list = n_array_1 * dk
+        indices_to_store = np.unique(
+            np.array([0, 1,
+                      *indices_list-3,
+                      *indices_list-2,
+                      *indices_list-1,
+                      *indices_list,
+                      *indices_list+1,
+                      *indices_list+2]
+                    )).astype(int)
 
         v_proj = self.get_filtered_vector()
 
@@ -98,7 +107,7 @@ class DACP_reduction:
             v_proj=v_proj,
             matrix=self.G_operator(),
             H=self.matrix,
-            Kmax=Kmax
+            indices_to_store=indices_to_store
         )
 
         n_array = np.arange(1, n+1, 1)
