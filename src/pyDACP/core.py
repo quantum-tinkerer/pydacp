@@ -90,7 +90,7 @@ class DACP_reduction:
         a_r = self.a / np.max(np.abs(self.bounds))
         dk = np.pi / a_r
         Kmax=int(dk*2*(n+1))
-        indices_to_store = np.arange(0, Kmax+1, 1)
+        indices_to_store = np.arange(0, Kmax, 1)
 
         v_proj = self.get_filtered_vector()
 
