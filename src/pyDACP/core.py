@@ -5,6 +5,7 @@ from scipy.integrate import quad
 import kwant
 from . import chebyshev
 import numpy as np
+from math import floor, ceil
 
 
 class DACP_reduction:
@@ -30,7 +31,7 @@ class DACP_reduction:
         else:
             self.find_bounds()
         self.sampling_subspace = sampling_subspace
-        self.random_vectors=random_vectors
+        self.random_vectors = random_vectors
 
     def find_bounds(self, method='sparse_diagonalization'):
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -83,21 +84,65 @@ class DACP_reduction:
         )
         return int(np.abs(quad(dos_estimate, -self.a, self.a))[0])
 
+    def direct_eigenvalues(self):
+        d = self.estimate_subspace_dimenstion()
+        n = int(np.abs((d*self.sampling_subspace - 1)/2))
+        a_r = self.a / np.max(np.abs(self.bounds))
+        dk = np.pi / a_r
+        n_array_1 = np.arange(1, 2*n+1, 1)
+        indices_list = n_array_1 * dk
+        indices_to_store = np.unique(
+            np.array([0, 1,
+                      *indices_list-3,
+                      *indices_list-2,
+                      *indices_list-1,
+                      *indices_list,
+                      *indices_list+1,
+                      *indices_list+2]
+                    )).astype(int)
+
+        v_proj = self.get_filtered_vector()
+
+        S_xy, H_xy = chebyshev.basis_no_store(
+            v_proj=v_proj,
+            matrix=self.G_operator(),
+            H=self.matrix,
+            indices_to_store=indices_to_store
+        )
+
+        n_array = np.arange(1, n+1, 1)
+        indices = np.floor(n_array * dk)
+        ks = np.unique(np.array([0, *indices, *indices-1])).astype(int)
+        m = len(ks)
+        S = np.zeros((m, m), dtype=complex)
+        H = np.zeros((m, m), dtype=complex)
+        for i, x in enumerate(ks):
+            for j, y in enumerate(ks):
+                xpy = int(x + y)
+                xmy = int(abs(x - y))
+                ind_p = np.where(indices_to_store == xpy)[0][0]
+                ind_m = np.where(indices_to_store == xmy)[0][0]
+                S[i, j] = 0.5 * (S_xy[ind_p] + S_xy[ind_m])
+                H[i, j] = 0.5 * (H_xy[ind_p] + H_xy[ind_m])
+
+        return S, H
+
     def span_basis(self):
         d = self.estimate_subspace_dimenstion()
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         # Divide by the number of random vectors
-        n = int(n/self.random_vectors)
+        n = int(n/int(self.random_vectors))
         a_r = self.a / np.max(np.abs(self.bounds))
         n_array = np.arange(1, n+1, 1)
-        indicesp1 = (n_array*np.pi/a_r).astype(int)
-        indices = np.sort(np.array([*indicesp1, *indicesp1-1]))
-        basis=[]
+        dk = np.pi / a_r
+        indicesp1 = (n_array * dk)
+        indices = np.unique(np.array([0, *indicesp1, *indicesp1-1])).astype(int)
+        basis = []
         for i in range(self.random_vectors):
             v_proj = self.get_filtered_vector()
             basis.append(chebyshev.basis(
                 v_proj=v_proj, matrix=self.G_operator(), indices=indices))
-        self.v_basis=np.concatenate(np.asarray(basis))
+        self.v_basis = np.concatenate(np.asarray(basis))
 
     def get_subspace_matrix(self):
         self.span_basis()
