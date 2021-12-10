@@ -4,12 +4,9 @@ def low_E_filter(v_rand, matrix, k):
     for i in range(k+1):
         if i == 0:
             v_n = v_rand
-            continue
-
         elif i == 1:
             v_nm1 = v_n
             v_n = matrix @ v_nm1
-            continue
         else:
             v_np1 = 2*matrix @ v_n - v_nm1
             v_nm1 = v_n
@@ -24,11 +21,9 @@ def basis(v_proj, matrix, indices):
     for i in range(k+1):
         if i == 0:
             v_n = v_proj
-            continue
         elif i == 1:
             v_nm1 = v_n
             v_n = matrix @ v_nm1
-            continue
         else:
             v_np1 = 2 * matrix @ v_n - v_nm1
             v_nm1 = v_n
@@ -45,17 +40,15 @@ def basis_no_store(v_proj, matrix, H, Kmax):
     for i in range(Kmax+1):
         if i == 0:
             v_n = v_proj
-            continue
         elif i == 1:
             v_nm1 = v_n
             v_n = matrix @ v_nm1
-            continue
         else:
             v_np1 = 2 * matrix @ v_n - v_nm1
             v_nm1 = v_n
             v_n = v_np1
         # if i in indices_to_store:
-        v_store = v_n / np.linalg.norm(v_n)
-        S_xy.append(v_proj.conj() @ v_store)
-        H_xy.append(v_proj.conj() @ H @ v_store)
+        v_store = v_n
+        S_xy.append(v_proj.conj() @ v_n)
+        H_xy.append(v_proj.conj() @ H @ v_n)
     return np.asarray(S_xy), np.asarray(H_xy)
