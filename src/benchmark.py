@@ -19,7 +19,7 @@ t = 1
 def make_syst(N=100, dimension=2):
 
     if dimension==2:
-        L=np.sqrt(10 * N)
+        L=np.sqrt(N)
         lat = kwant.lattice.square(a=1, norbs=1)
         # Define 2D shape
         def shape(pos):
@@ -76,14 +76,14 @@ def benchmark(N, seed, dimension):
     # Intialize DACP only to find the bounds of H
     dacp = core.DACP_reduction(H, a=0.2, eps=0.05)
     # Bandwidth
-    W = dacp.bounds[1] - dacp.bounds[0]
+    W = np.abs(dacp.bounds[1] - dacp.bounds[0])
     # Number of eigenvalues to compute
     n = 500
     # Estimate a
     a = n / N * W
 
     def sparse_benchmark():
-        _ = sparse_diag(H, sigma=0, k=n, which='LM', return_eigenvectors=False)
+        _ = sparse_diag(H, sigma=0, k=n, return_eigenvectors=False)
     start_time = time.time()
     sparse_memory=memory_usage(sparse_benchmark, max_usage=True)
     sparse_time=time.time() - start_time
@@ -104,9 +104,9 @@ def benchmark(N, seed, dimension):
 
 # +
 params = {
-    'N' : np.arange(1e3, 1e5, 1e3),
+    'N' : [1e5],#[10**i for i in np.linspace(3, 5, 5, endpoint=True)],
     'seeds' : np.linspace(1, 1, 1),
-    'dimensions' : [2,3]
+    'dimensions' : [2]#[2,3]
 }
 
 values = list(params.values())
@@ -164,3 +164,5 @@ da_mean.sel(dimensions=3).sel(output=['dacpmem', 'sparsemem']).plot(hue='output'
 plt.tight_layout()
 plt.savefig('mem_3d.png')
 plt.show()
+
+da.to_netcdf('./benchmark_data')
