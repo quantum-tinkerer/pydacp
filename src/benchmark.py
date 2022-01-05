@@ -2,7 +2,7 @@ import kwant
 import kwant.linalg.mumps as mumps
 from pyDACP import core, chebyshev
 import time
-from scipy.linalg import eigvalsh
+from scipy.linalg import eigvalsh, eigh
 import scipy.sparse.linalg as sla
 from scipy.sparse import identity
 import numpy as np
@@ -19,7 +19,7 @@ t = 1
 def make_syst(N=100, dimension=2):
 
     if dimension==2:
-        L=np.sqrt(10 * N)
+        L=np.sqrt(N)
         lat = kwant.lattice.square(a=1, norbs=1)
         # Define 2D shape
         def shape(pos):
@@ -37,7 +37,7 @@ def make_syst(N=100, dimension=2):
 
     def onsite(site, seed):
         delta_mu = kwant.digest.uniform(repr(site.pos) + str(seed)) - 0.5
-        return delta_mu
+        return delta_mu - 2
 
     if dimension==2:
         syst[lat.shape(shape, (0, 0))] = onsite
@@ -73,17 +73,9 @@ def sparse_diag(matrix, k, sigma, **kwargs):
 def benchmark(N, seed, dimension):
     syst = make_syst(N=N, dimension=dimension)
     H = syst.hamiltonian_submatrix(params=dict(seed=seed), sparse=True)
-    # Intialize DACP only to find the bounds of H
-    dacp = core.DACP_reduction(H, a=0.2, eps=0.05)
-    # Bandwidth
-    W = dacp.bounds[1] - dacp.bounds[0]
-    # Number of eigenvalues to compute
-    n = 500
-    # Estimate a
-    a = n / N * W
 
     def sparse_benchmark():
-        _ = sparse_diag(H, sigma=0, k=n, which='LM', return_eigenvectors=False)
+        eigs, _ = sparse_diag(H, sigma=0, k=n, which='LM', return_eigenvectors=True)
     start_time = time.time()
     sparse_memory=memory_usage(sparse_benchmark, max_usage=True)
     sparse_time=time.time() - start_time
@@ -91,8 +83,8 @@ def benchmark(N, seed, dimension):
     sparse_data = [sparse_time, sparse_memory]
 
     def dacp_benchmark():
-        dacp = core.DACP_reduction(H, a=a, eps=0.05, return_eigenvectors=False)
-        _ = eigvalsh(dacp.get_subspace_matrix())
+        dacp = core.DACP_reduction(H, a=np.max(np.abs(eigs)), eps=0.05, return_eigenvectors=True, chebolution=False)
+        _, _ = eigh(dacp.get_subspace_matrix()[0])
     start_time = time.time()
     dacp_memory=memory_usage(dacp_benchmark, max_usage=True)
     dacp_time=time.time() - start_time
@@ -104,9 +96,9 @@ def benchmark(N, seed, dimension):
 
 # +
 params = {
-    'N' : np.arange(1e3, 1e5, 1e3),
-    'seeds' : np.linspace(1, 1, 1),
-    'dimensions' : [2,3]
+    'N' : [10**i for i in np.linspace(3, 4, 5, endpoint=True)],
+    'seeds' : [1],
+    'dimensions' : [2]#[2,3]
 }
 
 values = list(params.values())
