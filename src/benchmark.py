@@ -75,9 +75,9 @@ def benchmark(N, seed, dimension):
     H = syst.hamiltonian_submatrix(params=dict(seed=seed), sparse=True)
 
     def sparse_benchmark():
-        eigs, _ = sparse_diag(H, sigma=0, k=n, which='LM', return_eigenvectors=True)
+         return sparse_diag(H, sigma=0, k=100, which='LM', return_eigenvectors=True)[0]
     start_time = time.time()
-    sparse_memory=memory_usage(sparse_benchmark, max_usage=True)
+    sparse_memory, eigs=memory_usage(sparse_benchmark, max_usage=True, retval=True)
     sparse_time=time.time() - start_time
 
     sparse_data = [sparse_time, sparse_memory]
@@ -138,21 +138,29 @@ plt.rcParams['font.size'] = 15
 plt.rcParams['legend.fontsize'] = 15
 
 da_mean.sel(dimensions=2).sel(output=['dacptime', 'sparsetime']).plot(hue='output')
+plt.xscale('log')
+plt.yscale('log')
 plt.tight_layout()
 plt.savefig('time_2d.png')
 plt.show()
 
 da_mean.sel(dimensions=2).sel(output=['dacpmem', 'sparsemem']).plot(hue='output')
+plt.xscale('log')
+plt.yscale('log')
 plt.tight_layout()
 plt.savefig('mem_2d.png')
 plt.show()
 
 da_mean.sel(dimensions=3).sel(output=['dacptime', 'sparsetime']).plot(hue='output')
+plt.xscale('log')
+plt.yscale('log')
 plt.tight_layout()
 plt.savefig('time_3d.png')
 plt.show()
 
 da_mean.sel(dimensions=3).sel(output=['dacpmem', 'sparsemem']).plot(hue='output')
+plt.xscale('log')
+plt.yscale('log')
 plt.tight_layout()
 plt.savefig('mem_3d.png')
 plt.show()
