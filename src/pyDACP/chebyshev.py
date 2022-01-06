@@ -15,11 +15,9 @@ def low_E_filter(v_rand, matrix, k):
     return v_n/np.linalg.norm(v_n)
 
 
-def basis(v_proj, matrix, indices, first_run=True, Q=None, R=None):
+def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
     count = 0
-    # TODO: If k is too large, the norms of the vectors are from some large order.
-    k = indices[-1]
-    for i in range(k+1):
+    for i in range(matrix.shape[0]):
         if i == 0:
             v_n = v_proj
         elif i == 1:
@@ -29,7 +27,7 @@ def basis(v_proj, matrix, indices, first_run=True, Q=None, R=None):
             v_np1 = 2 * matrix @ v_n - v_nm1
             v_nm1 = v_n
             v_n = v_np1
-        if i in indices:
+        if i == int((count + 1) * dk):
             vec = v_n / np.linalg.norm(v_n)
             if count == 0:
                 if first_run:

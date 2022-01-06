@@ -157,26 +157,19 @@ class DACP_reduction:
         return self.svd_matrix(matrix_proj, S)
 
     def span_basis(self):
-        d = self.estimate_subspace_dimenstion()
-        n = int(np.abs((d * self.sampling_subspace - 1) / 2))
-        # Divide by the number of random vectors
-        n = int(n / int(self.random_vectors))
         a_r = self.a / np.max(np.abs(self.bounds))
-        n_array = np.arange(1, n + 1, 1)
         dk = np.pi / a_r
-        indicesp1 = n_array * dk
-        indices = np.unique(np.array([0, *indicesp1, *indicesp1 - 1])).astype(int)
         # First run
         Q, R = chebyshev.basis(
             v_proj=self.get_filtered_vector(),
             matrix=self.G_operator(),
-            indices=indices
+            dk = dk
         )
         # Second run
         Qi, Ri = chebyshev.basis(
             v_proj=self.get_filtered_vector(),
             matrix=self.G_operator(),
-            indices=indices,
+            dk=dk,
             Q=Q,
             R=R,
             first_run=False,
@@ -187,7 +180,7 @@ class DACP_reduction:
             Qi, Ri = chebyshev.basis(
                 v_proj=self.get_filtered_vector(),
                 matrix=self.G_operator(),
-                indices=indices,
+                dk=dk,
                 Q=Q,
                 R=R,
                 first_run=False,
