@@ -27,11 +27,11 @@ def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
             v_np1 = 2 * matrix @ v_n - v_nm1
             v_nm1 = v_n
             v_n = v_np1
-        if i == int((count + 1) * dk):
-            vec = v_n / np.linalg.norm(v_n)
+        if i == int(count * dk):
+            vec = v_n / np.linalg.norm(v_n, axis=0)
             if count == 0:
                 if first_run:
-                    Q, R = qr(vec[:, np.newaxis], mode='economic')
+                    Q, R = qr(vec, mode='economic')
                 else:
                     k = Q.shape[1]
                     Qi, Ri = qr_insert(Q=Q, R=R, u=vec, k=k, which='col')

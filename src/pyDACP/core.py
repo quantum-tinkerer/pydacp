@@ -84,8 +84,8 @@ class DACP_reduction:
     def get_filtered_vector(self, filter_order=15):
         # TODO: check whether we need complex vector
         v_rand = 2 * (
-            np.random.rand(self.matrix.shape[0])
-            + np.random.rand(self.matrix.shape[0]) * 1j
+            np.random.rand(self.matrix.shape[0], self.random_vectors)
+            + np.random.rand(self.matrix.shape[0], self.random_vectors) * 1j
             - 0.5 * (1 + 1j)
         )
         v_rand = v_rand / np.linalg.norm(v_rand)
@@ -158,7 +158,7 @@ class DACP_reduction:
 
     def span_basis(self):
         a_r = self.a / np.max(np.abs(self.bounds))
-        dk = np.pi / a_r
+        dk = np.pi / a_r / self.random_vectors
         # First run
         Q, R = chebyshev.basis(
             v_proj=self.get_filtered_vector(),
@@ -189,7 +189,7 @@ class DACP_reduction:
 
     def span_basis_filter(self):
         est_dim = self.a / np.abs(self.bounds[0] - self.bounds[1]) * self.matrix.shape[0]
-        for count in range(10000):
+        for count in range(self.matrix.shape[0]):
             vec = self.get_filtered_vector()
             if count==0:
                 Q, R = qr(vec[:, np.newaxis], mode='economic')
