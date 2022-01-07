@@ -7,9 +7,9 @@ def low_E_filter(v_rand, matrix, k):
             v_n = v_rand
         elif i == 1:
             v_nm1 = v_n
-            v_n = matrix @ v_nm1
+            v_n = matrix.dot(v_nm1)
         else:
-            v_np1 = 2*matrix @ v_n - v_nm1
+            v_np1 = 2*matrix.dot(v_n) - v_nm1
             v_nm1 = v_n
             v_n = v_np1
     return v_n/np.linalg.norm(v_n)
@@ -22,9 +22,9 @@ def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
             v_n = v_proj
         elif i == 1:
             v_nm1 = v_n
-            v_n = matrix @ v_nm1
+            v_n = matrix.dot(v_nm1)
         else:
-            v_np1 = 2 * matrix @ v_n - v_nm1
+            v_np1 = 2 * matrix.dot(v_n) - v_nm1
             v_nm1 = v_n
             v_n = v_np1
         if i == int(count * dk):
@@ -62,13 +62,13 @@ def basis_no_store(v_proj, matrix, H, indices_to_store):
             v_n = v_proj
         elif i == 1:
             v_nm1 = v_n
-            v_n = matrix @ v_nm1
+            v_n = matrix.dot(v_nm1)
         else:
-            v_np1 = 2 * matrix @ v_n - v_nm1
+            v_np1 = 2 * matrix.dot(v_n) - v_nm1
             v_nm1 = v_n
             v_n = v_np1
         if i in indices_to_store:
             v_store = v_n
             S_xy.append(v_proj.conj() @ v_n)
-            H_xy.append(v_proj.conj() @ H @ v_n)
+            H_xy.append(v_proj.conj() @ H.dot(v_n))
     return np.asarray(S_xy), np.asarray(H_xy)

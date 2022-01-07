@@ -33,7 +33,7 @@ class DACP_reduction:
             Boundaries of the spectrum. If not provided the maximum and
             minimum eigenvalues are calculated.
         """
-        self.matrix = matrix
+        self.matrix = matrix.tocsr()
         self.a = a
         self.eps = eps
         self.return_eigenvectors = return_eigenvectors
@@ -79,7 +79,7 @@ class DACP_reduction:
         Emax = np.max(np.abs(self.bounds)) * (1 + self.eps)
         E0 = (Emax ** 2 - self.a ** 2) / 2
         Ec = (Emax ** 2 + self.a ** 2) / 2
-        return (self.matrix @ self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
+        return (self.matrix.multiply(self.matrix) - eye(self.matrix.shape[0]) * Ec) / E0
 
     def get_filtered_vector(self, filter_order=15):
         # TODO: check whether we need complex vector
