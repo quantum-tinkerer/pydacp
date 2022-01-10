@@ -187,23 +187,6 @@ class DACP_reduction:
             )
         self.v_basis = Q
 
-    def span_basis_filter(self):
-        est_dim = self.a / np.abs(self.bounds[0] - self.bounds[1]) * self.matrix.shape[0]
-        for count in range(self.matrix.shape[0]):
-            vec = self.get_filtered_vector()
-            if count==0:
-                Q, R = qr(vec[:, np.newaxis], mode='economic')
-            else:
-                k = Q.shape[1]
-                Qi, Ri = qr_insert(Q=Q, R=R, u=vec, k=k, which='col')
-                ortho_condition = np.abs(Ri[k, k])
-                if ortho_condition < 1e-9:
-                    return Q
-                else:
-                    Q, R = Qi, Ri
-        # Add error message
-        return Q
-
     def eigenvalues_and_eigenvectors_filter(self):
         self.v_basis = self.span_basis_filter()
         S = self.v_basis.conj().T @ self.v_basis
