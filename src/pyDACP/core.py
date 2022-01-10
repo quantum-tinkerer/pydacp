@@ -81,7 +81,7 @@ class DACP_reduction:
         Ec = (Emax ** 2 + self.a ** 2) / 2
         return (self.matrix @ self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
 
-    def get_filtered_vector(self, filter_order=15):
+    def get_filtered_vector(self, filter_order=20):
         # TODO: check whether we need complex vector
         v_rand = 2 * (
             np.random.rand(self.matrix.shape[0], self.random_vectors)
