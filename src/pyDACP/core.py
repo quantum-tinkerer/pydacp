@@ -79,7 +79,7 @@ class DACP_reduction:
         Emax = np.max(np.abs(self.bounds)) * (1 + self.eps)
         E0 = (Emax ** 2 - self.a ** 2) / 2
         Ec = (Emax ** 2 + self.a ** 2) / 2
-        return (self.matrix.multiply(self.matrix) - eye(self.matrix.shape[0]) * Ec) / E0
+        return (self.matrix @ self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
 
     def get_filtered_vector(self, filter_order=15):
         # TODO: check whether we need complex vector
@@ -91,7 +91,7 @@ class DACP_reduction:
         v_rand = v_rand / np.linalg.norm(v_rand)
         K_max = int(filter_order * np.max(np.abs(self.bounds)) / self.a)
         vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
-        return vec / np.linalg.norm(vec)
+        return vec / np.linalg.norm(vec, axis=0)
 
     def estimate_subspace_dimenstion(self):
         dos_estimate = kwant.kpm.SpectralDensity(
