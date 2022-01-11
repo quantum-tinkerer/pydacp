@@ -73,7 +73,7 @@ class DACP_reduction:
         v_rand = 2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(
             self.matrix.shape[0])*1j - 0.5 * (1 + 1j))
         v_rand = v_rand/np.linalg.norm(v_rand)
-        K_max = int(12 * np.max(np.abs(self.bounds)) / self.a)
+        K_max = int(20 * np.max(np.abs(self.bounds)) / self.a)
         vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
         return vec / np.linalg.norm(vec)
 
@@ -98,17 +98,16 @@ class DACP_reduction:
         n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
         dk = np.pi / a_r
-        n_array_1 = np.arange(1, 2*n+1, 1)
-        indices_list = n_array_1 * dk
-        indices_to_store = np.unique(
-            np.array([0, 1,
-                      *indices_list-3,
-                      *indices_list-2,
-                      *indices_list-1,
-                      *indices_list,
-                      *indices_list+1,
-                      *indices_list+2]
-                     )).astype(int)
+
+        n_array = np.arange(1, n+1, 1)
+        indices = np.floor(n_array * dk)
+        ks = np.unique(np.array([0, *indices, *indices-1])).astype(int)
+        ks_list = np.array(list(it.product(ks, ks)))
+
+        xpy = np.sum(ks_list, axis=1).astype(int)
+        xmy = np.abs(ks_list[:, 0] - ks_list[:, 1]).astype(int)
+
+        indices_to_store = np.unique(np.concatenate((xpy, xmy)))
 
         v_proj = self.get_filtered_vector()
 
@@ -118,14 +117,6 @@ class DACP_reduction:
             H=self.matrix,
             indices_to_store=indices_to_store
         )
-
-        n_array = np.arange(1, n+1, 1)
-        indices = np.floor(n_array * dk)
-        ks = np.unique(np.array([0, *indices, *indices-1])).astype(int)
-        ks_list = np.array(list(it.product(ks, ks)))
-
-        xpy = np.sum(ks_list, axis=1).astype(int)
-        xmy = np.abs(ks_list[:, 0] - ks_list[:, 1]).astype(int)
 
         ind_p = np.searchsorted(indices_to_store, xpy)
         ind_m = np.searchsorted(indices_to_store, xmy)
