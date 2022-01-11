@@ -18,8 +18,7 @@ class DACP_reduction:
         bounds=None,
         sampling_subspace=1.5,
         random_vectors=2,
-        return_eigenvectors=False,
-        chebolution=True,
+        return_eigenvectors=False
     ):
         """Find the spectral bounds of a given matrix.
 
@@ -201,9 +200,6 @@ class DACP_reduction:
 
     def get_subspace_matrix(self):
         if self.return_eigenvectors:
-            if self.chebolution:
-                return self.eigenvalues_and_eigenvectors()
-            else:
-                return self.eigenvalues_and_eigenvectors_filter()
+            return self.eigenvalues_and_eigenvectors()
         else:
             return self.direct_eigenvalues()
