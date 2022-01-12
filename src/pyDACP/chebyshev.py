@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.linalg import qr, qr_insert
+import itertools as it
 
 def low_E_filter(v_rand, matrix, k):
     for i in range(k + 1):
@@ -59,7 +60,7 @@ def index_generator_fn(dk):
                 yield result
         i += 1
 
-def basis_no_store(v_proj, matrix, H, dk):
+def basis_no_store(v_proj, matrix, H, dk, random_vectors):
     S_xy = []
     H_xy = []
     index_generator = index_generator_fn(dk)
@@ -79,11 +80,10 @@ def basis_no_store(v_proj, matrix, H, dk):
             v_n = v_np1
         if k_latest == storage_list[-1]:
             storage_list.append(next(index_generator))
-            S_xy.append(v_proj.conj() @ v_n)
-            H_xy.append(v_proj.conj() @ H @ v_n)
+            S_xy.append(v_proj.conj().T @ v_n)
+            H_xy.append(v_proj.conj().T @ H @ v_n)
         if 2*index*dk + 1 == k_latest: #not sure whether to +1 or not so delete maybe sometime future
             k_products = np.array(list(it.product(k_list, k_list)))
-            print(k_list)
             xpy = np.sum(k_products, axis=1).astype(int)
             xmy = np.abs(k_products[:, 0] - k_products[:, 1]).astype(int)
 
@@ -96,9 +96,12 @@ def basis_no_store(v_proj, matrix, H, dk):
             matrix_proj = 0.5 * (h_xy[ind_p] + h_xy[ind_m])
             m = len(k_list)
 
-            S = np.reshape(S, (m, m))
-            matrix_proj = np.reshape(matrix_proj, (m, m))
+            S = np.reshape(S, (m, m, random_vectors, random_vectors))
+            S = np.hstack(np.hstack(S))
+            matrix_proj = np.reshape(matrix_proj, (m, m, random_vectors, random_vectors))
+            matrix_proj = np.hstack(np.hstack(matrix_proj))
             q_S, r_S = qr(S)
+            m*=random_vectors
             ortho_cond = np.abs(r_S[m-1, m-1]) < 1e-9
             if ortho_cond:
                 return S[:m, :m], matrix_proj[:m, :m]

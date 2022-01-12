@@ -42,7 +42,6 @@ class DACP_reduction:
             self.find_bounds()
         self.sampling_subspace = sampling_subspace
         self.random_vectors = random_vectors
-        self.chebolution = chebolution
 
     def find_bounds(self, method="sparse_diagonalization"):
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -115,7 +114,8 @@ class DACP_reduction:
             v_proj=self.get_filtered_vector(),
             matrix=self.G_operator(),
             H=self.matrix,
-            dk=int(dk)
+            dk=int(dk),
+            random_vectors=self.random_vectors
         )
 
         return self.svd_matrix(matrix_proj, S)
