@@ -107,52 +107,17 @@ class DACP_reduction:
 
     def direct_eigenvalues(self):
         d = self.estimate_subspace_dimenstion()
-        n = int(np.abs((d * self.sampling_subspace - 1) / 2))
+        n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
         dk = np.pi / a_r
-        n_array_1 = np.arange(1, 2 * n + 1, 1)
-        indices_list = n_array_1 * dk
-        indices_to_store = np.unique(
-            np.array(
-                [
-                    0,
-                    1,
-                    *indices_list - 3,
-                    *indices_list - 2,
-                    *indices_list - 1,
-                    *indices_list,
-                    *indices_list + 1,
-                    *indices_list + 2,
-                ]
-            )
-        ).astype(int)
 
-        v_proj = self.get_filtered_vector()
-
-        S_xy, H_xy = chebyshev.basis_no_store(
-            v_proj=v_proj,
+        S, matrix_proj = chebyshev.basis_no_store(
+            v_proj=self.get_filtered_vector(),
             matrix=self.G_operator(),
             H=self.matrix,
-            indices_to_store=indices_to_store,
+            dk=int(dk)
         )
 
-        n_array = np.arange(1, n + 1, 1)
-        indices = np.floor(n_array * dk)
-        ks = np.unique(np.array([0, *indices, *indices - 1])).astype(int)
-        ks_list = np.array(list(it.product(ks, ks)))
-
-        xpy = np.sum(ks_list, axis=1).astype(int)
-        xmy = np.abs(ks_list[:, 0] - ks_list[:, 1]).astype(int)
-
-        ind_p = np.searchsorted(indices_to_store, xpy)
-        ind_m = np.searchsorted(indices_to_store, xmy)
-
-        S = 0.5 * (S_xy[ind_p] + S_xy[ind_m])
-        matrix_proj = 0.5 * (H_xy[ind_p] + H_xy[ind_m])
-
-        m = len(ks)
-        S = np.reshape(S, (m, m))
-        matrix_proj = np.reshape(matrix_proj, (m, m))
         return self.svd_matrix(matrix_proj, S)
 
     def span_basis(self):
