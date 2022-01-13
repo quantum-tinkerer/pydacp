@@ -15,7 +15,6 @@ class DACP_reduction:
         a,
         eps,
         bounds=None,
-        sampling_subspace=1.5,
         random_vectors=2,
         return_eigenvectors=False
     ):
@@ -39,7 +38,6 @@ class DACP_reduction:
             self.bounds = bounds
         else:
             self.find_bounds()
-        self.sampling_subspace = sampling_subspace
         self.random_vectors = random_vectors
 
     def find_bounds(self, method="sparse_diagonalization"):
