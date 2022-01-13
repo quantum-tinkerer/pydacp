@@ -1,6 +1,6 @@
 from scipy.sparse.linalg import eigsh
 from scipy.sparse import eye
-from scipy.linalg import eigh, qr, qr_insert
+from scipy.linalg import eigh, qr, qr_insert, eigvalsh
 from scipy.integrate import quad
 from . import chebyshev
 import numpy as np
@@ -90,13 +90,6 @@ class DACP_reduction:
         vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
         return vec / np.linalg.norm(vec, axis=0)
 
-    def svd_matrix(self, matrix_proj, S):
-        s, V = eigh(S)
-        indx = np.abs(s) > 1e-12
-        lambda_s = np.diag(1 / np.sqrt(s[indx]))
-        U = V[:, indx] @ lambda_s
-        return U.T.conj() @ matrix_proj @ U, U.T.conj() @ S @ U
-
     def direct_eigenvalues(self):
         a_r = self.a / np.max(np.abs(self.bounds))
         dk = np.pi / a_r / self.random_vectors
@@ -109,7 +102,7 @@ class DACP_reduction:
             random_vectors=self.random_vectors
         )
 
-        return self.svd_matrix(matrix_proj, S)
+        return eigvalsh(matrix_proj, S)
 
     def span_basis(self):
         a_r = self.a / np.max(np.abs(self.bounds))
@@ -142,17 +135,12 @@ class DACP_reduction:
             )
         self.v_basis = Q
 
-    def eigenvalues_and_eigenvectors_filter(self):
-        self.v_basis = self.span_basis_filter()
-        S = self.v_basis.conj().T @ self.v_basis
-        matrix_proj = self.v_basis.conj().T @ self.matrix.dot(self.v_basis)
-        return matrix_proj, S
-
     def eigenvalues_and_eigenvectors(self):
         self.span_basis()
         S = self.v_basis.conj().T @ self.v_basis
         matrix_proj = self.v_basis.conj().T @ self.matrix.dot(self.v_basis)
-        return self.svd_matrix(matrix_proj, S)
+        eigvals, eigvecs = eigh(matrix_proj)
+        return eigvals, eigvecs @ self.v_basis.T
 
     def get_subspace_matrix(self):
         if self.return_eigenvectors:
