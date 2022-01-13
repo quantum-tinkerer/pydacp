@@ -101,11 +101,10 @@ def basis_no_store(v_proj, matrix, H, dk, random_vectors):
             matrix_proj = np.reshape(matrix_proj, (m, m, random_vectors, random_vectors))
             matrix_proj = np.hstack(np.hstack(matrix_proj))
             q_S, r_S = qr(S)
-            m*=random_vectors
             ortho_condition = np.abs(np.diag(r_S)) < 1e-9
             if ortho_condition.any():
                 indices = np.invert(ortho_condition)
-                return S[:m, :m], matrix_proj[:m, :m]
+                return S[indices, :][:, indices], matrix_proj[indices, :][:, indices]
             else:
                 index += 1
                 k_list.append(k_list[-1]+dk-1)
