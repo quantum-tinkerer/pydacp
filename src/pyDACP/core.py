@@ -1,19 +1,139 @@
 from scipy.sparse.linalg import eigsh
-from scipy.sparse import eye
-from scipy.linalg import eigh, qr, qr_insert, eigvalsh
-from scipy.integrate import quad
+from scipy.sparse import eye, csr_matrix
+from scipy.linalg import eigh, eigvalsh
 from . import chebyshev
 import numpy as np
-from math import floor, ceil
-import itertools as it
+from math import ceil
 
 
+def dacp_eig(
+    matrix,
+    a,
+    eps=0.1,
+    bounds=None,
+    random_vectors=2,
+    return_eigenvectors=False,
+    filter_order=20
+):
+    """Find the eigendecomposition within the given spectral bounds of a given matrix.
+
+    Parameters
+    ----------
+    matrix : 2D array
+        Initial matrix.
+    eps : float
+        Ensures that the bounds are strict.
+    bounds : tuple, or None
+        Boundaries of the spectrum. If not provided the maximum and
+        minimum eigenvalues are calculated.
+    random_vectors : int
+        When return_eigenvectors=False, specifies the maximum expected
+        degeneracy of the matrix.
+    return_eigenvectors : bool
+        If True, returns eigenvectors and processes general degeneracies.
+        However, if False, the algorithm conserves memory
+        and only processes random_vectors>degenerecies.
+    filter_order : int
+        The number of times a vector is filtered is given by filter_order*E_max/a.
+    """
+    matrix = csr_matrix(matrix)
+
+    if bounds is None:
+        # Relative tolerance to which to calculate eigenvalues.  Because after
+        # rescaling we will add eps / 2 to the spectral bounds, we don't need
+        # to know the bounds more accurately than eps / 2.
+        tol = eps / 2
+
+        lmax = float(
+            eigsh(matrix, k=1, which="LA", return_eigenvectors=False, tol=tol)
+        )
+        lmin = float(
+            eigsh(matrix, k=1, which="SA", return_eigenvectors=False, tol=tol)
+        )
+
+        if lmax - lmin <= abs(lmax + lmin) * tol / 2:
+            raise ValueError(
+                "The matrix has a single eigenvalue, it is not possible to "
+                "obtain a spectral density."
+            )
+
+        bounds = [lmin, lmax]
+
+    Emin = bounds[0] * (1 + eps)
+    Emax = bounds[1] * (1 + eps)
+    E0 = (Emax - Emin) / 2
+    Ec = (Emax + Emin) / 2
+    G_operator = (matrix - eye(matrix.shape[0]) * Ec) / E0
+
+    Emax = np.max(np.abs(bounds)) * (1 + eps)
+    E0 = (Emax ** 2 - a ** 2) / 2
+    Ec = (Emax ** 2 + a ** 2) / 2
+    F_operator = (matrix @ matrix - eye(matrix.shape[0]) * Ec) / E0
+
+    def get_filtered_vector():
+        v_rand = 2 * (
+            np.random.rand(matrix.shape[0], random_vectors)
+            + np.random.rand(matrix.shape[0], random_vectors) * 1j
+            - 0.5 * (1 + 1j)
+        )
+        v_rand = v_rand / np.linalg.norm(v_rand)
+        K_max = int(filter_order * np.max(np.abs(bounds)) / a)
+        vec = chebyshev.low_E_filter(v_rand, F_operator, K_max)
+        return vec / np.linalg.norm(vec, axis=0)
+
+    a_r = a / np.max(np.abs(bounds))
+    dk = np.pi / a_r
+    if return_eigenvectors:
+        # First run
+        Q, R = chebyshev.basis(
+            v_proj=get_filtered_vector(),
+            matrix=G_operator,
+            dk=dk
+        )
+        # Second run
+        Qi, Ri = chebyshev.basis(
+            v_proj=get_filtered_vector(),
+            matrix=G_operator,
+            dk=dk,
+            Q=Q,
+            R=R,
+            first_run=False,
+        )
+        # Other runs to solve higher degeneracies
+        while Q.shape[1] < Qi.shape[1]:
+            Q, R = Qi, Ri
+            Qi, Ri = chebyshev.basis(
+                v_proj=get_filtered_vector(),
+                matrix=G_operator,
+                dk=dk,
+                Q=Q,
+                R=R,
+                first_run=False,
+            )
+        v_basis = Q
+        matrix_proj = v_basis.conj().T @ matrix.dot(v_basis)
+        eigvals, eigvecs = eigh(matrix_proj)
+        return eigvals, eigvecs @ v_basis.T
+
+    else:
+        S, matrix_proj = chebyshev.basis_no_store(
+            v_proj=get_filtered_vector(),
+            matrix=G_operator,
+            H=matrix,
+            dk=ceil(dk),
+            random_vectors=random_vectors
+        )
+
+        return eigvalsh(matrix_proj, S)
+
+
+# TODO: Delete the class in the future
 class DACP_reduction:
     def __init__(
         self,
         matrix,
         a,
-        eps,
+        eps=0.1,
         bounds=None,
         random_vectors=2,
         return_eigenvectors=False
@@ -24,13 +144,19 @@ class DACP_reduction:
         ----------
         matrix : 2D array
             Initial matrix.
-        eps : scalar
+        eps : float
             Ensures that the bounds are strict.
         bounds : tuple, or None
             Boundaries of the spectrum. If not provided the maximum and
             minimum eigenvalues are calculated.
+        random_vectors : int
+            When return_eigenvectors=False, specifies the maximum expected
+            degeneracy of the matrix.
+        return_eigenvectors : bool
+            If True, returns eigenvectors. However, if False, the algorithm
+            conserves memory.
         """
-        self.matrix = matrix.tocsr()
+        self.matrix = csr_matrix(matrix)
         self.a = a
         self.eps = eps
         self.return_eigenvectors = return_eigenvectors
@@ -40,7 +166,7 @@ class DACP_reduction:
             self.find_bounds()
         self.random_vectors = random_vectors
 
-    def find_bounds(self, method="sparse_diagonalization"):
+    def find_bounds(self):
         # Relative tolerance to which to calculate eigenvalues.  Because after
         # rescaling we will add eps / 2 to the spectral bounds, we don't need
         # to know the bounds more accurately than eps / 2.
@@ -77,7 +203,6 @@ class DACP_reduction:
         return (self.matrix @ self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
 
     def get_filtered_vector(self, filter_order=20):
-        # TODO: check whether we need complex vector
         v_rand = 2 * (
             np.random.rand(self.matrix.shape[0], self.random_vectors)
             + np.random.rand(self.matrix.shape[0], self.random_vectors) * 1j
@@ -90,13 +215,13 @@ class DACP_reduction:
 
     def direct_eigenvalues(self):
         a_r = self.a / np.max(np.abs(self.bounds))
-        dk = np.pi / a_r / self.random_vectors
+        dk = int(np.pi / a_r)
 
         S, matrix_proj = chebyshev.basis_no_store(
             v_proj=self.get_filtered_vector(),
             matrix=self.G_operator(),
             H=self.matrix,
-            dk=int(dk),
+            dk=dk,
             random_vectors=self.random_vectors
         )
 
@@ -104,12 +229,12 @@ class DACP_reduction:
 
     def span_basis(self):
         a_r = self.a / np.max(np.abs(self.bounds))
-        dk = np.pi / a_r / self.random_vectors
+        dk = np.pi / a_r
         # First run
         Q, R = chebyshev.basis(
             v_proj=self.get_filtered_vector(),
             matrix=self.G_operator(),
-            dk = dk
+            dk=dk
         )
         # Second run
         Qi, Ri = chebyshev.basis(

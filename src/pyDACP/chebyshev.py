@@ -2,35 +2,37 @@ import numpy as np
 from scipy.linalg import qr, qr_insert
 import itertools as it
 
-def low_E_filter(v_rand, matrix, k):
-    for i in range(k + 1):
-        if i == 0:
-            v_n = v_rand
-        elif i == 1:
+
+def chebyshev_recursion_gen(matrix, v_proj):
+    order = 0
+    while True:
+        if order == 0:
+            v_n = v_proj
+        elif order == 1:
             v_nm1 = v_n
             v_n = matrix.dot(v_nm1)
         else:
             v_np1 = 2 * matrix.dot(v_n) - v_nm1
             v_nm1 = v_n
             v_n = v_np1
-    return v_n / np.linalg.norm(v_n, axis=0)
+        order += 1
+        yield v_n
+
+
+def low_E_filter(v_proj, matrix, k):
+    chebyshev_recursion = chebyshev_recursion_gen(matrix, v_proj)
+    for i in range(k + 1):
+        v_n = next(chebyshev_recursion)
+    return v_n/np.linalg.norm(v_n, axis=0)
 
 
 def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
-    count = 0
+    chebyshev_recursion = chebyshev_recursion_gen(matrix, v_proj)
     for i in range(matrix.shape[0]):
-        if i == 0:
-            v_n = v_proj
-        elif i == 1:
-            v_nm1 = v_n
-            v_n = matrix.dot(v_nm1)
-        else:
-            v_np1 = 2 * matrix.dot(v_n) - v_nm1
-            v_nm1 = v_n
-            v_n = v_np1
-        if i == int(count * dk):
+        v_n = next(chebyshev_recursion)
+        if i == int(i * dk):
             vec = v_n / np.linalg.norm(v_n, axis=0)
-            if count == 0 and first_run:
+            if i == 0 and first_run:
                 Q, R = qr(vec, mode="economic")
             else:
                 Q, R = qr_insert(
@@ -40,15 +42,15 @@ def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
                 if ortho_condition.any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
-            count += 1
     return Q, R
+
 
 def index_generator_fn(dk):
     items = [-2, -1, 0, 1]
     i = -1
     prev_result = 0
     while True:
-        if i<1:
+        if i < 1:
             prev_result = i + 1
             yield i + 1
         else:
@@ -60,24 +62,18 @@ def index_generator_fn(dk):
                 yield result
         i += 1
 
+
 def basis_no_store(v_proj, matrix, H, dk, random_vectors):
     S_xy = []
     H_xy = []
     index_generator = index_generator_fn(dk)
+    chebyshev_recursion = chebyshev_recursion_gen(matrix, v_proj)
     storage_list = [next(index_generator)]
     k_list = [0, dk-1, dk]
     k_latest = 0
     index = 1
     while True:
-        if k_latest == 0:
-            v_n = v_proj
-        elif k_latest == 1:
-            v_nm1 = v_n
-            v_n = matrix @ v_nm1
-        else:
-            v_np1 = 2 * matrix @ v_n - v_nm1
-            v_nm1 = v_n
-            v_n = v_np1
+        v_n = next(chebyshev_recursion)
         if k_latest == storage_list[-1]:
             storage_list.append(next(index_generator))
             S_xy.append(v_proj.conj().T @ v_n)
