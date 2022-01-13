@@ -2,7 +2,6 @@ from scipy.sparse.linalg import eigsh
 from scipy.sparse import eye
 from scipy.linalg import eigh, qr, qr_insert
 from scipy.integrate import quad
-import kwant
 from . import chebyshev
 import numpy as np
 from math import floor, ceil
@@ -91,12 +90,6 @@ class DACP_reduction:
         vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
         return vec / np.linalg.norm(vec, axis=0)
 
-    def estimate_subspace_dimenstion(self):
-        dos_estimate = kwant.kpm.SpectralDensity(
-            self.matrix, energy_resolution=self.a / 4, mean=True, bounds=self.bounds
-        )
-        return int(np.abs(quad(dos_estimate, -self.a, self.a))[0])
-
     def svd_matrix(self, matrix_proj, S):
         s, V = eigh(S)
         indx = np.abs(s) > 1e-12
@@ -105,10 +98,8 @@ class DACP_reduction:
         return U.T.conj() @ matrix_proj @ U, U.T.conj() @ S @ U
 
     def direct_eigenvalues(self):
-        d = self.estimate_subspace_dimenstion()
-        n = int(np.abs((d*self.sampling_subspace - 1)/2))
         a_r = self.a / np.max(np.abs(self.bounds))
-        dk = np.pi / a_r
+        dk = np.pi / a_r / self.random_vectors
 
         S, matrix_proj = chebyshev.basis_no_store(
             v_proj=self.get_filtered_vector(),
