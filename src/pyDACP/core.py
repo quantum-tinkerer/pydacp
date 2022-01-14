@@ -88,13 +88,13 @@ def dacp_eig(
         # First run
         Q, R = chebyshev.basis(
             v_proj=get_filtered_vector(),
-            matrix=G_operator,
+            G_operator=G_operator,
             dk=dk
         )
         # Second run
         Qi, Ri = chebyshev.basis(
             v_proj=get_filtered_vector(),
-            matrix=G_operator,
+            G_operator=G_operator,
             dk=dk,
             Q=Q,
             R=R,
@@ -105,7 +105,7 @@ def dacp_eig(
             Q, R = Qi, Ri
             Qi, Ri = chebyshev.basis(
                 v_proj=get_filtered_vector(),
-                matrix=G_operator,
+                G_operator=G_operator,
                 dk=dk,
                 Q=Q,
                 R=R,
@@ -119,8 +119,8 @@ def dacp_eig(
     else:
         S, matrix_proj = chebyshev.basis_no_store(
             v_proj=get_filtered_vector(),
-            matrix=G_operator,
-            H=matrix,
+            G_operator=G_operator,
+            matrix=matrix,
             dk=ceil(dk),
             random_vectors=random_vectors
         )

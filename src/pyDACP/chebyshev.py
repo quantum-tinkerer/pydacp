@@ -2,12 +2,21 @@ import numpy as np
 from scipy.linalg import qr, qr_insert
 import itertools as it
 
+def chebyshev_recursion_gen(matrix, v_0):
+    """
+    Recursively apply Chebyshev polynomials of a matrix.
 
-def chebyshev_recursion_gen(matrix, v_proj):
+    Parameters
+    ----------
+    matrix : sparse matrix
+        Compute Chebyshev polynomials of this matrix.
+    v_0 : 1D array
+        Initial vector.
+    """
     order = 0
     while True:
         if order == 0:
-            v_n = v_proj
+            v_n = v_0
         elif order == 1:
             v_nm1 = v_n
             v_n = matrix.dot(v_nm1)
@@ -19,16 +28,46 @@ def chebyshev_recursion_gen(matrix, v_proj):
         yield v_n
 
 
-def low_E_filter(v_proj, matrix, k):
-    chebyshev_recursion = chebyshev_recursion_gen(matrix, v_proj)
-    for i in range(k + 1):
+def low_E_filter(v_rand, F_operator, K_max):
+    """
+    Chebyshev filter of a radom vector `v_proj`.
+
+    Parameters
+    ----------
+    vproj : 2D array
+        Collection of random vectors.
+    F_operator : sparse matrix
+        Filter operator.
+    K_max : int
+        Highest order of Chebyshev polynomials of `F_operator` computed.
+    """
+    chebyshev_recursion = chebyshev_recursion_gen(F_operator, v_rand)
+    for i in range(K_max + 1):
         v_n = next(chebyshev_recursion)
     return v_n/np.linalg.norm(v_n, axis=0)
 
 
-def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
-    chebyshev_recursion = chebyshev_recursion_gen(matrix, v_proj)
-    for i in range(matrix.shape[0]):
+def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
+    """
+    Generate a complete basis with Chebyshev evolution.
+
+    Parameters
+    ----------
+    vproj : 2D array
+        Collection of filtered vectors.
+    G_operator : sparse matrix
+        Generator of Chebyshev evolution.
+    dk : float
+        Steps on Chebyshev evolution before collecting vector.
+    first_run : boolean
+        `True` if it is the first run of Chebyshev evolution before checking degeneracies.
+    Q : 2D array
+        Q matrix from previous QR decomposition. Only necessary if `first_run=False`.
+    R : 2D array
+        R matrix from previous QR decomposition. Only necessary if `first_run=False`.
+    """
+    chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
+    for i in range(G_operator.shape[0]):
         v_n = next(chebyshev_recursion)
         if i == int(i * dk):
             vec = v_n / np.linalg.norm(v_n, axis=0)
@@ -38,7 +77,7 @@ def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
                 Q, R = qr_insert(
                     Q=Q, R=R, u=vec, k=Q.shape[1], which="col", overwrite_qru=True
                 )
-                ortho_condition = np.abs(np.diag(R)) < 1e-9
+                ortho_condition = np.abs(np.diag(R)) < 1e-12
                 if ortho_condition.any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
@@ -46,6 +85,14 @@ def basis(v_proj, matrix, dk, first_run=True, Q=None, R=None):
 
 
 def index_generator_fn(dk):
+    """
+    Generate indices of values to store for the eigenvalues-only method.
+
+    Parameters
+    ----------
+    dk : float
+        Steps on Chebyshev evolution before collecting vector.
+    """
     items = [-2, -1, 0, 1]
     i = -1
     prev_result = 0
@@ -63,11 +110,27 @@ def index_generator_fn(dk):
         i += 1
 
 
-def basis_no_store(v_proj, matrix, H, dk, random_vectors):
+def basis_no_store(v_proj, G_operator, matrix, dk, random_vectors):
+    """
+    Generate a complete basis with Chebyshev evolution.
+
+    Parameters
+    ----------
+    vproj : 2D array
+        Collection of filtered vectors.
+    G_operator : sparse matrix
+        Generator of Chebyshev evolution.
+    H : sparse matrix
+        Initial matrix.
+    dk : float
+        Steps on Chebyshev evolution before collecting vector.
+    random_vectors : int
+        Number of random vectors.x
+    """
     S_xy = []
-    H_xy = []
+    matrix_xy = []
     index_generator = index_generator_fn(dk)
-    chebyshev_recursion = chebyshev_recursion_gen(matrix, v_proj)
+    chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
     storage_list = [next(index_generator)]
     k_list = [0, dk-1, dk]
     k_latest = 0
@@ -77,7 +140,7 @@ def basis_no_store(v_proj, matrix, H, dk, random_vectors):
         if k_latest == storage_list[-1]:
             storage_list.append(next(index_generator))
             S_xy.append(v_proj.conj().T @ v_n)
-            H_xy.append(v_proj.conj().T @ H @ v_n)
+            matrix_xy.append(v_proj.conj().T @ matrix @ v_n)
         if 2*index*dk + 1 == k_latest: #not sure whether to +1 or not so delete maybe sometime future
             k_products = np.array(list(it.product(k_list, k_list)))
             xpy = np.sum(k_products, axis=1).astype(int)
@@ -87,17 +150,20 @@ def basis_no_store(v_proj, matrix, H, dk, random_vectors):
             ind_m = np.searchsorted(storage_list, xmy)
 
             s_xy = np.asarray(S_xy)
-            h_xy = np.asarray(H_xy)
+            m_xy = np.asarray(matrix_xy)
             S = 0.5 * (s_xy[ind_p] + s_xy[ind_m])
-            matrix_proj = 0.5 * (h_xy[ind_p] + h_xy[ind_m])
+            matrix_proj = 0.5 * (m_xy[ind_p] + m_xy[ind_m])
             m = len(k_list)
 
             S = np.reshape(S, (m, m, random_vectors, random_vectors))
             S = np.hstack(np.hstack(S))
+            norms = np.outer(np.diag(S), np.diag(S))
+            S = np.multiply(S, norms)
             matrix_proj = np.reshape(matrix_proj, (m, m, random_vectors, random_vectors))
             matrix_proj = np.hstack(np.hstack(matrix_proj))
+            matrix_proj = np.multiply(matrix_proj, norms)
             q_S, r_S = qr(S)
-            ortho_condition = np.abs(np.diag(r_S)) < 1e-9
+            ortho_condition = np.abs(np.diag(r_S)) < 1e-12
             if ortho_condition.any():
                 indices = np.invert(ortho_condition)
                 return S[indices, :][:, indices], matrix_proj[indices, :][:, indices]
