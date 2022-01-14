@@ -15,11 +15,12 @@ def dacp_eig(
     return_eigenvectors=False,
     filter_order=20
 ):
-    """Find the eigendecomposition within the given spectral bounds of a given matrix.
+    """
+    Find the eigendecomposition within the given spectral bounds of a given matrix.
 
     Parameters
     ----------
-    matrix : 2D array
+    matrix : 2D array or sparse matrix
         Initial matrix.
     eps : float
         Ensures that the bounds are strict.
@@ -76,7 +77,7 @@ def dacp_eig(
             + np.random.rand(matrix.shape[0], random_vectors) * 1j
             - 0.5 * (1 + 1j)
         )
-        v_rand = v_rand / np.linalg.norm(v_rand)
+        v_rand = v_rand / np.linalg.norm(v_rand, axis=0)
         K_max = int(filter_order * np.max(np.abs(bounds)) / a)
         vec = chebyshev.low_E_filter(v_rand, F_operator, K_max)
         return vec / np.linalg.norm(vec, axis=0)
