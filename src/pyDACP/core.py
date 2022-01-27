@@ -117,6 +117,7 @@ def dacp_eig(
         return eigvals, eigvecs @ v_basis.T
 
     else:
+        # First run
         S, matrix_proj = chebyshev.basis_no_store(
             v_proj=get_filtered_vector(),
             G_operator=G_operator,
@@ -124,8 +125,25 @@ def dacp_eig(
             dk=ceil(dk),
             random_vectors=random_vectors
         )
+        
+        # Second run
+        Qi, Ri = chebyshev.basis(
+            v_proj=get_filtered_vector(),
+            G_operator=G_operator,
+            dk=dk,
+            Q=Q,
+            R=R,
+            first_run=False,
+        )
 
-        return eigvalsh(matrix_proj, S)
+        while
+
+        # s, V = eigh(S)
+        # indx = np.abs(s) > 1e-12
+        # lambda_s = np.diag(1/np.sqrt(s[indx]))
+        # U = V[:, indx]@lambda_s
+
+        return eigvalsh(matrix_proj, S)#U.T.conj() @ matrix_proj @ U)
 
 
 # TODO: Delete the class in the future
@@ -226,7 +244,12 @@ class DACP_reduction:
             random_vectors=self.random_vectors
         )
 
-        return eigvalsh(matrix_proj, S)
+        s, V = eigh(S)
+        indx = np.abs(s) > 1e-12
+        lambda_s = np.diag(1/np.sqrt(s[indx]))
+        U = V[:, indx]@lambda_s
+
+        return eigvalsh(U.T.conj() @ matrix_proj @ U)
 
     def span_basis(self):
         a_r = self.a / np.max(np.abs(self.bounds))
