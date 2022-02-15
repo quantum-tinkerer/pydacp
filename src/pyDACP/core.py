@@ -173,9 +173,12 @@ def dacp_eig(
         # 1. Dimension of the subspace no longer increases.
         # 2. There are no more orthogonal random vectors.
         while (dim_i > dim) and (v_i.shape[1] > 0):
+            print('Adding more random vectors')
             # If both conditions are fulfilled, we go to next interation.
             S, matrix_proj, R, Q, dim = Si, matrix_proj_i, R_i, Q_i, dim_i
             # Stack vectors together and make sure dimensions match.
+            # The line below breaks the code when using a large number of random vectors.
+            # The reason is that the last index of v_prev and v_prev_i become different due to QR.
             v_prev = np.vstack([v_prev, v_prev_i])
             # Generate a new set of random vectors.
             v_i = get_filtered_vector()
@@ -185,6 +188,7 @@ def dacp_eig(
             if ortho_condition.any():
                 indices = np.invert(ortho_condition)
                 Q_i, R_i = Q_i[:, indices], R_i[indices, :][:, indices]
+                break
             v_i = Q_i[:,Q.shape[1]:]
             # If there's any vector to input, we run it one more time.
             if v_i.shape[1] > 0:
@@ -204,18 +208,19 @@ def dacp_eig(
                 v_prev_i = np.stack([v_i])
 
         # Normalization
-        # norms = np.outer(np.diag(Si), np.diag(Si))
-        # Si = np.multiply(Si, norms)
-        # matrix_proj_i = np.multiply(matrix_proj_i, norms)
+        norms = 1 / np.sqrt(np.diag(Si))
+        norms = np.outer(norms, norms)
+        Si = np.multiply(Si, norms)
+        matrix_proj_i = np.multiply(matrix_proj_i, norms)
 
         return matrix_proj_i, Si
         # # return eigvalsh(matrix_proj_i, Si)
 
 
-#         s, V = eigh(Si)
-#         indx = s > 1e-12
-#         lambda_s = np.diag(1/np.sqrt(s[indx]))
-#         U = V[:, indx]@lambda_s
+# s, V = eigh(Si)
+# indx = s > 1e-12
+# lambda_s = np.diag(1/np.sqrt(s[indx]))
+# U = V[:, indx]@lambda_s
 
 #         return eigvalsh(U.T.conj() @ matrix_proj_i @ U)
         # return U.T.conj() @ matrix_proj_i @ U

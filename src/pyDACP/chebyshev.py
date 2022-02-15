@@ -112,6 +112,28 @@ def index_generator_fn(dk):
         i += 1
 
 
+def construct_matrix(k_list_i, k_list_j, storage_list, S_xy, random_vectors):
+    k_products = np.array(list(it.product(k_list_i, k_list_j)))
+    xpy = np.sum(k_products, axis=1).astype(int)
+    xmy = np.abs(k_products[:, 0] - k_products[:, 1]).astype(int)
+
+    ind_p = np.searchsorted(storage_list, xpy)
+    ind_m = np.searchsorted(storage_list, xmy)
+
+    s_xy = np.asarray(S_xy)
+    S = 0.5 * (s_xy[ind_p] + s_xy[ind_m])
+    i_size = len(k_list_i)
+    j_size = len(k_list_j)
+    shape = (
+        i_size,
+        j_size,
+        random_vectors,
+        random_vectors,
+    )
+    S = np.reshape(S, shape)
+    return S
+
+
 def basis_no_store(
     v_proj,
     G_operator,
@@ -143,123 +165,133 @@ def basis_no_store(
     S_xy = []
     matrix_xy = []
     index_generator = index_generator_fn(dk)
-    # print(v_proj.shape)
     chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
     storage_list = [next(index_generator)]
     k_list = [0, dk - 1, dk]
     k_latest = 0
     index = 1
+    if not first_run:
+        S_xy_off = []
+        matrix_xy_off = []
     while True:
         v_n = next(chebyshev_recursion)
-        if k_latest == storage_list[-1]:
-            storage_list.append(next(index_generator))
-            S_xy.append(v_proj.conj().T @ v_n)
-            matrix_xy.append(v_proj.conj().T @ matrix @ v_n)
-        if 2 * index * dk + 1 == k_latest:
-            # not sure whether to +1 or not so delete maybe sometime future
-            k_products = np.array(list(it.product(k_list, k_list)))
-            xpy = np.sum(k_products, axis=1).astype(int)
-            xmy = np.abs(k_products[:, 0] - k_products[:, 1]).astype(int)
-
-            ind_p = np.searchsorted(storage_list, xpy)
-            ind_m = np.searchsorted(storage_list, xmy)
-
-            s_xy = np.asarray(S_xy)
-            m_xy = np.asarray(matrix_xy)
-            S_diag = 0.5 * (s_xy[ind_p] + s_xy[ind_m])
-            matrix_proj_diag = 0.5 * (m_xy[ind_p] + m_xy[ind_m])
-            m = len(k_list)
-
-            shape_diag = (
-                m,
-                m,
-                random_vectors,
-                random_vectors,
-            )
-
-            S_diag = np.reshape(S_diag, shape_diag)
-            S_diag = np.concatenate(
-                np.concatenate(
-                    S_diag,
+        if first_run:
+            if k_latest == storage_list[-1]:
+                storage_list.append(next(index_generator))
+                S_xy.append(v_proj.conj().T @ v_n)
+                matrix_xy.append(v_proj.conj().T @ matrix @ v_n)
+            if 2 * index * dk + 1 == k_latest:
+                S = construct_matrix(
+                    k_list,
+                    k_list,
+                    storage_list,
+                    S_xy,
+                    random_vectors
+                )
+                matrix_proj = construct_matrix(
+                    k_list,
+                    k_list,
+                    storage_list,
+                    matrix_xy,
+                    random_vectors
+                )
+                S = np.concatenate(
+                    np.concatenate(
+                        S,
+                        axis=1,
+                    ),
                     axis=1,
-                ),
-                axis=1,
-            )
-            norms_diag = 1 / np.sqrt(np.diag(S_diag))
-            norms = np.outer(norms_diag, norms_diag)
-            S_diag = np.multiply(S_diag, norms)
-            matrix_proj_diag = np.reshape(matrix_proj_diag, shape_diag)
-            matrix_proj_diag = np.concatenate(
-                np.concatenate(
-                    matrix_proj_diag,
+                )
+                matrix_proj = np.concatenate(
+                    np.concatenate(
+                        matrix_proj,
+                        axis=1,
+                    ),
                     axis=1,
-                ),
-                axis=1,
-            )
-            matrix_proj_diag = np.multiply(matrix_proj_diag, norms)
+                )
+                # Perform QR orthogonalization of overlap matrix
+                # q_S, r_S = qr(S_diag)
+                # ortho_condition = np.abs(np.diag(r_S)) < 1e-9
+                s = eigvalsh(S)
+                indx = s > 1e-9
+                dim = sum(indx)
+                # if ortho_condition.any():
+                if dim < S.shape[0]:
+                    # q_S, r_S = qr(S)
+                    # indx = np.abs(np.diag(r_S)) < 1e-9
+                    # qr_idx = np.invert(ortho_condition)
+                    # dim = sum(qr_idx)
+                    print("Found " + str(dim) + " eigenvalues so far.")
+                    indices_chebolution = [index]
+                    return S, matrix_proj, dim, indices_chebolution
+                else:
+                    # S_prev, matrix_prev = S, matrix_proj
+                    index += 1
+                    k_list.append(k_list[-1] + dk - 1)
+                    k_list.append(k_list[-2] + dk)
+            k_latest += 1
 
-            if first_run:
-                S = S_diag
-                matrix_proj = matrix_proj_diag
-
-            else:
-                # Construct block off-diagonal
-
-                # This part can be made much faster using the Chebyshev relation:
-                # T_i(x) * T_j(x) = 0.5 * (T_{i+j}(x) + T_{|i-j|}(x))
-                # And probably can reuse values already computed in the previous step.
-
-                # This part goes as follows:
-                # We want to compute Hij and Sij.
-                # i goes from 1 to n
-                # j goes from 1 to k_list[-1] / dk
-                # As you can see, n is different for different iterations.
-                # Obtain list of indices used to construct S_diag
-
-                Sij_prev = []
-                matrix_ij_prev = []
+        else:
+            if k_latest == storage_list[-1]:
+                storage_list.append(next(index_generator))
+                S_xy.append(v_proj.conj().T @ v_n)
+                matrix_xy.append(v_proj.conj().T @ matrix @ v_n)
+                S_xy_off_n = []
+                matrix_xy_off_n = []
+                for v_prev_n in v_prev:
+                    S_xy_off.append(v_prev_n.conj().T @ v_n)
+                    matrix_xy_off.append(v_prev_n.conj().T @ matrix @ v_n)
+                # S_xy_off.append(np.stack(S_xy_off_n))
+                # matrix_xy_off.append(np.stack(matrix_xy_off_n))
+            if k_latest == 2 * np.max([*indices_prev, index]) * dk + 1:
+                print(np.asarray(S_xy_off).shape)
+                S_diag = construct_matrix(
+                    k_list, k_list, storage_list, S_xy, random_vectors
+                )
+                S_diag = np.concatenate(
+                    np.concatenate(
+                        S_diag,
+                        axis=1,
+                    ),
+                    axis=1,
+                )
+                matrix_proj_diag = construct_matrix(
+                    k_list, k_list, storage_list, matrix_xy, random_vectors
+                )
+                matrix_proj_diag = np.concatenate(
+                    np.concatenate(
+                        matrix_proj_diag,
+                        axis=1,
+                    ),
+                    axis=1,
+                )
+                S_off_n = []
+                matrix_off_n = []
                 for i, n in enumerate(indices_prev):
-                    Sij_prev_n = []
-                    matrix_ij_prev_n = []
-                    k_prev_1 = np.arange(1, n + 1, 1) * dk
-                    k_prev_2 = k_prev_1 - 1
-                    k_prev_list = np.unique(np.concatenate([[0], k_prev_1, k_prev_2]))
-                    # Chebolve random vectors from previous run
-                    chebyshev_recursion_prev_off = chebyshev_recursion_gen(
-                        G_operator, v_prev[i]
+                    k_prev_n = np.arange(1, n + 1, 1) * dk
+                    k_list_prev = np.unique(
+                        np.concatenate([[0], k_prev_n, k_prev_n - 1])
                     )
-                    for k_prev in range(k_prev_list[-1]+1):
-                        # Generate next vector in the Chebolution
-                        v_prev_off = next(chebyshev_recursion_prev_off)
-                        # Loop over j's
-                        Sj_prev_n = []
-                        matrix_j_prev_n = []
-                        # This is storing all i's
-                        if k_prev in k_prev_list:
-                            # Chebolve random vectors from this run
-                            chebyshev_recursion_proj_off = chebyshev_recursion_gen(
-                                G_operator, v_proj
-                            )
-                            for k_proj in range(k_list[-1]+1):
-                                # Generate next vector in the Chebolution
-                                v_proj_off = next(chebyshev_recursion_proj_off)
-                                # This is storing all j's
-                                if k_proj in k_list:
-                                    # Normalize
-                                    v_a = v_proj_off / np.linalg.norm(
-                                        v_proj_off, axis=0
-                                    )
-                                    v_b = v_prev_off / np.linalg.norm(
-                                        v_prev_off, axis=0
-                                    )
-                                    Sj_prev_n.append(v_b.conj().T @ v_a)
-                                    matrix_j_prev_n.append(v_b.conj().T @ matrix @ v_a)
-                            Sij_prev_n.append(np.stack(Sj_prev_n))
-                            matrix_ij_prev_n.append(np.stack(matrix_j_prev_n))
-                    Sij_prev.append(np.stack(Sij_prev_n))
-                    matrix_ij_prev.append(np.stack(matrix_ij_prev_n))
+                    S_off_n.append(
+                        construct_matrix(
+                            k_list_prev,
+                            k_list,
+                            storage_list,
+                            S_xy_off,
+                            random_vectors
+                        )
+                    )
+                    matrix_off_n.append(
+                        construct_matrix(
+                            k_list_prev,
+                            k_list,
+                            storage_list,
+                            matrix_xy_off,
+                            random_vectors,
+                        )
+                    )
 
-                S_off = np.vstack(Sij_prev)
+                S_off = np.asarray(np.vstack(S_off_n))
                 S_off = np.concatenate(
                     np.concatenate(
                         S_off,
@@ -267,7 +299,7 @@ def basis_no_store(
                     ),
                     axis=1,
                 )
-                matrix_proj_off = np.vstack(matrix_ij_prev)
+                matrix_proj_off = np.asarray(np.vstack(matrix_off_n))
                 matrix_proj_off = np.concatenate(
                     np.concatenate(
                         matrix_proj_off,
@@ -276,34 +308,48 @@ def basis_no_store(
                     axis=1,
                 )
 
-                # Glue everything
-                S1 = np.hstack([S_prev, S_off])
-                S2 = np.hstack([S_off.conj().T, S_diag])
-                S = np.vstack([S1, S2])
-                M1 = np.hstack([matrix_prev, matrix_proj_off])
-                M2 = np.hstack([matrix_proj_off.conj().T, matrix_proj_diag])
-                matrix_proj = np.vstack([M1, M2])
+                S = np.block(
+                    [[S_prev, S_off],
+                     [S_off.conj().T, S_diag]]
+                )
+                matrix_proj = np.block(
+                    [
+                        [matrix_prev, matrix_proj_off],
+                        [matrix_proj_off.conj().T, matrix_proj_diag],
+                    ]
+                )
 
-            # Perform QR orthogonalization of overlap matrix
-            # q_S, r_S = qr(S)
-            # ortho_condition = np.abs(np.diag(r_S)) < 1e-6
-            s = eigvalsh(S)
-            indx = np.abs(s) > 1e-3
-            dim = sum(indx)
-            # if ortho_condition.any():
-            if dim < S.shape[0]:
-                # qr_idx = np.invert(ortho_condition)
-                # dim = sum(qr_idx)
-                print("Found " + str(dim) + " vectors so far.")
-                if first_run:
-                    indices_chebolution = [index]
-                else:
-                    indices_chebolution = indices_prev.copy()
-                    indices_chebolution.append(index)
+                # Perform QR orthogonalization of overlap matrix
+                # q_S, r_S = qr(S_diag)
+                # ortho_condition = np.abs(np.diag(r_S)) < 1e-9
+                # s = eigvalsh(S_diag)
+                # indx = s > 1e-6
+                # dim_diag = sum(indx)
+                # if ortho_condition.any():
+                # print(dim_diag, S_diag.shape[0])
+                # if dim_diag < S_diag.shape[0]:
+                    # q_S, r_S = qr(S)
+                    # indx = np.abs(np.diag(r_S)) < 1e-9
+                    # qr_idx = np.invert(ortho_condition)
+                    # dim = sum(qr_idx)
+                # Normalization
+                Si = S
+                norms = 1 / np.sqrt(np.diag(Si))
+                norms = np.outer(norms, norms)
+                Si = np.multiply(Si, norms)
+                s = eigvalsh(Si)
+                indx = s > 1e-3
+                dim = sum(indx)
+                print("Found " + str(dim) + " eigenvalues so far.")
+                indices_chebolution = indices_prev.copy()
+                indices_chebolution.append(index)
                 return S, matrix_proj, dim, indices_chebolution
-            else:
-                # S_prev, matrix_prev = S, matrix_proj
-                index += 1
-                k_list.append(k_list[-1] + dk - 1)
-                k_list.append(k_list[-2] + dk)
-        k_latest += 1
+            #     else:
+            #         if index >= np.max(indices_prev):
+            #             return S, matrix_proj, dim, indices_chebolution
+            #         # S_prev, matrix_prev = S, matrix_proj
+            #         else:
+            #             index += 1
+            #             k_list.append(k_list[-1] + dk - 1)
+            #             k_list.append(k_list[-2] + dk)
+            k_latest += 1
