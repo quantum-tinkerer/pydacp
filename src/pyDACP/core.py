@@ -7,6 +7,14 @@ from math import ceil
 import matplotlib.pyplot as plt
 
 
+def svd_decomposition(S, matrix_proj):
+    s, V = eigh(S)
+    indx = s > 1e-12
+    lambda_s = np.diag(1/np.sqrt(s[indx]))
+    U = V[:, indx]@lambda_s
+    return U.T.conj() @ matrix_proj @ U
+
+
 def dacp_eig(
     matrix,
     a,
@@ -14,7 +22,7 @@ def dacp_eig(
     bounds=None,
     random_vectors=2,
     return_eigenvectors=False,
-    filter_order=20
+    filter_order=12
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -87,7 +95,9 @@ def dacp_eig(
             return vec / np.linalg.norm(vec, axis=0)
 
     a_r = a / np.max(np.abs(bounds))
-    dk = np.pi / a_r
+    dk = ceil(np.pi / a_r)
+    a_r = a / np.max(np.abs(bounds))
+
     if return_eigenvectors:
         # First run
         Q, R = chebyshev.basis(
@@ -121,106 +131,25 @@ def dacp_eig(
         return eigvals, eigvecs @ v_basis.T
 
     else:
-        # First run
-        # Generate a QR orthogonalized collection of random vectors.
-        Q, R = get_filtered_vector(qr_decomp=True)
-        # Make sure they are indeed orthogonal by removing the non_orthogonal ones.
-        # MUST BE CAREFUL HERE BECAUSE THE COLLECTION OF VECTORS IS NO LONGER SIZE (M, random_vectors)
-        # So we update everywhere `random_vectors = filtered_qr_vectors.shape[1]`.
-        ortho_condition = np.abs(np.diag(R)) < 1e-9
-        if ortho_condition.any():
-            indices = np.invert(ortho_condition)
-            Q, R = Q[:, indices], R[indices, :][:, indices]
-        # Now run
-        S, matrix_proj, dim, indices_prev = chebyshev.basis_no_store(
-            v_proj=Q,
-            G_operator=G_operator,
-            matrix=matrix,
-            dk=ceil(dk),
-            random_vectors=Q.shape[1],
-        )
-        # Second run
-        # Same thing, but we don't perform QR in the first step.
-        v_i = get_filtered_vector()
-        # Instead, we QR wrt all the vectors collected so far.
-        Q_i, R_i = qr_insert(Q, R, u=v_i, k=Q.shape[1], which="col")
-        # Remove non-orthogonal vectors
-        ortho_condition = np.abs(np.diag(R_i)) < 1e-9
-        if ortho_condition.any():
-            indices = np.invert(ortho_condition)
-            Q_i, R_i = Q_i[:, indices], R_i[indices, :][:, indices]
-        # Q_i contain all vectors, we just want the new ones.
-        v_i = Q_i[:,Q.shape[1]:]
-
-        # This is just to adjust the dimenstion:
-        v_prev = np.stack([Q])
-        Si, matrix_proj_i, dim_i, indices_prev = chebyshev.basis_no_store(
-            v_proj=v_i,
-            v_prev=v_prev,
-            G_operator=G_operator,
-            matrix=matrix,
-            dk=ceil(dk),
-            random_vectors=v_i.shape[1],
-            S_prev = S,
-            matrix_prev = matrix_proj,
-            first_run=False,
-            indices_prev = indices_prev
-        )
-        # Again adjust dimenstion
-        v_prev_i = np.stack([v_i])
-
-        # We have two stop conditions here:
-        # 1. Dimension of the subspace no longer increases.
-        # 2. There are no more orthogonal random vectors.
-        while (dim_i > dim) and (v_i.shape[1] > 0):
-            print('Adding more random vectors')
-            # If both conditions are fulfilled, we go to next interation.
-            S, matrix_proj, R, Q, dim = Si, matrix_proj_i, R_i, Q_i, dim_i
-            # Stack vectors together and make sure dimensions match.
-            # The line below breaks the code when using a large number of random vectors.
-            # The reason is that the last index of v_prev and v_prev_i become different due to QR.
-            v_prev = np.vstack([v_prev, v_prev_i])
-            # Generate a new set of random vectors.
-            v_i = get_filtered_vector()
-            # Remove linearly dependent ones.
-            Q_i, R_i = qr_insert(Q, R, u=v_i, k=Q.shape[1], which="col")
-            ortho_condition = np.abs(np.diag(R_i)) < 1e-9
-            if ortho_condition.any():
-                indices = np.invert(ortho_condition)
-                Q_i, R_i = Q_i[:, indices], R_i[indices, :][:, indices]
-                break
-            v_i = Q_i[:,Q.shape[1]:]
-            # If there's any vector to input, we run it one more time.
-            if v_i.shape[1] > 0:
-                Si, matrix_proj_i, dim_i, indices_prev = chebyshev.basis_no_store(
-                    v_proj=v_i,
-                    v_prev=v_prev,
-                    G_operator=G_operator,
-                    matrix=matrix,
-                    dk=int(dk),
-                    random_vectors=v_i.shape[1],
-                    S_prev = S,
-                    matrix_prev = matrix_proj,
-                    first_run=False,
-                    indices_prev = indices_prev
-                )
-                # Adjust dimension of vector.
-                v_prev_i = np.stack([v_i])
-
-        # Normalization
-        norms = 1 / np.sqrt(np.diag(Si))
-        norms = np.outer(norms, norms)
-        Si = np.multiply(Si, norms)
-        matrix_proj_i = np.multiply(matrix_proj_i, norms)
-
-        return matrix_proj_i, Si
-        # # return eigvalsh(matrix_proj_i, Si)
-
-
-# s, V = eigh(Si)
-# indx = s > 1e-12
-# lambda_s = np.diag(1/np.sqrt(s[indx]))
-# U = V[:, indx]@lambda_s
-
-#         return eigvalsh(U.T.conj() @ matrix_proj_i @ U)
-        # return U.T.conj() @ matrix_proj_i @ U
+        N_loop = 0
+        while True:
+            v_proj = get_filtered_vector()
+            if N_loop == 0:
+                v_0, k_list, S, matrix_proj = chebyshev.eigvals_init(v_proj, G_operator, matrix, dk)
+                N = int(np.sqrt(S.size))
+                S_sq = S.reshape(N, N)
+                matrix_proj_sq = matrix_proj.reshape(N, N)
+                H_red = svd_decomposition(S_sq, matrix_proj_sq)
+                N_H_prev = H_red.shape[0]
+            else:
+                v_0, S, matrix_proj = chebyshev.eigvals_deg(v_0, v_proj, k_list, S, matrix_proj, G_operator, matrix, dk)
+                N = int(np.sqrt(S.size))
+                S_sq = S.reshape(N, N)
+                matrix_proj_sq = matrix_proj.reshape(N, N)
+                H_red = svd_decomposition(S_sq, matrix_proj_sq)
+                N_H_cur = H_red.shape[0]
+                if N_H_cur == N_H_prev:
+                    return eigvalsh(H_red)
+                else:
+                    N_H_prev = N_H_cur
+            N_loop += 1
