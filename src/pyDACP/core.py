@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 def svd_decomposition(S, matrix_proj):
     s, V = eigh(S)
     indx = s > 1e-12
-    lambda_s = np.diag(1/np.sqrt(s[indx]))
-    U = V[:, indx]@lambda_s
+    lambda_s = np.diag(1 / np.sqrt(s[indx]))
+    U = V[:, indx] @ lambda_s
     return U.T.conj() @ matrix_proj @ U
 
 
@@ -22,7 +22,7 @@ def dacp_eig(
     bounds=None,
     random_vectors=2,
     return_eigenvectors=False,
-    filter_order=12
+    filter_order=12,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -54,12 +54,8 @@ def dacp_eig(
         # to know the bounds more accurately than eps / 2.
         tol = eps / 2
 
-        lmax = float(
-            eigsh(matrix, k=1, which="LA", return_eigenvectors=False, tol=tol)
-        )
-        lmin = float(
-            eigsh(matrix, k=1, which="SA", return_eigenvectors=False, tol=tol)
-        )
+        lmax = float(eigsh(matrix, k=1, which="LA", return_eigenvectors=False, tol=tol))
+        lmin = float(eigsh(matrix, k=1, which="SA", return_eigenvectors=False, tol=tol))
 
         if lmax - lmin <= abs(lmax + lmin) * tol / 2:
             raise ValueError(
@@ -80,7 +76,7 @@ def dacp_eig(
     Ec = (Emax ** 2 + a ** 2) / 2
     F_operator = (matrix @ matrix - eye(matrix.shape[0]) * Ec) / E0
 
-    def get_filtered_vector(qr_decomp = False):
+    def get_filtered_vector():
         v_rand = 2 * (
             np.random.rand(matrix.shape[0], random_vectors)
             + np.random.rand(matrix.shape[0], random_vectors) * 1j
@@ -89,10 +85,7 @@ def dacp_eig(
         v_rand = v_rand / np.linalg.norm(v_rand, axis=0)
         K_max = int(filter_order * np.max(np.abs(bounds)) / a)
         vec = chebyshev.low_E_filter(v_rand, F_operator, K_max)
-        if random_vectors > 1 and qr_decomp:
-            return qr(vec / np.linalg.norm(vec, axis=0), mode='economic')
-        else:
-            return vec / np.linalg.norm(vec, axis=0)
+        return vec / np.linalg.norm(vec, axis=0)
 
     a_r = a / np.max(np.abs(bounds))
     dk = ceil(np.pi / a_r)
@@ -101,9 +94,7 @@ def dacp_eig(
     if return_eigenvectors:
         # First run
         Q, R = chebyshev.basis(
-            v_proj=get_filtered_vector(),
-            G_operator=G_operator,
-            dk=dk
+            v_proj=get_filtered_vector(), G_operator=G_operator, dk=dk
         )
         # Second run
         Qi, Ri = chebyshev.basis(
@@ -135,14 +126,18 @@ def dacp_eig(
         while True:
             v_proj = get_filtered_vector()
             if N_loop == 0:
-                v_0, k_list, S, matrix_proj = chebyshev.eigvals_init(v_proj, G_operator, matrix, dk)
+                v_0, k_list, S, matrix_proj = chebyshev.eigvals_init(
+                    v_proj, G_operator, matrix, dk
+                )
                 N = int(np.sqrt(S.size))
                 S_sq = S.reshape(N, N)
                 matrix_proj_sq = matrix_proj.reshape(N, N)
                 H_red = svd_decomposition(S_sq, matrix_proj_sq)
                 N_H_prev = H_red.shape[0]
             else:
-                v_0, S, matrix_proj = chebyshev.eigvals_deg(v_0, v_proj, k_list, S, matrix_proj, G_operator, matrix, dk)
+                v_0, S, matrix_proj = chebyshev.eigvals_deg(
+                    v_0, v_proj, k_list, S, matrix_proj, G_operator, matrix, dk
+                )
                 N = int(np.sqrt(S.size))
                 S_sq = S.reshape(N, N)
                 matrix_proj_sq = matrix_proj.reshape(N, N)
