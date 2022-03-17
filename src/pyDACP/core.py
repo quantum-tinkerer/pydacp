@@ -131,20 +131,25 @@ def dacp_eig(
                 )
                 N = int(np.sqrt(S.size))
                 S_sq = S.reshape(N, N)
-                matrix_proj_sq = matrix_proj.reshape(N, N)
-                H_red = svd_decomposition(S_sq, matrix_proj_sq)
-                N_H_prev = H_red.shape[0]
+                N_H_prev = sum(np.diag(qr(S_sq, mode='r')[0]) > 1e-12)
+                # N_H_prev = sum(eigvalsh(S_sq) > 1e-12)
             else:
                 v_0, S, matrix_proj = chebyshev.eigvals_deg(
                     v_0, v_proj, k_list, S, matrix_proj, G_operator, matrix, dk
                 )
                 N = int(np.sqrt(S.size))
                 S_sq = S.reshape(N, N)
-                matrix_proj_sq = matrix_proj.reshape(N, N)
-                H_red = svd_decomposition(S_sq, matrix_proj_sq)
-                N_H_cur = H_red.shape[0]
-                if N_H_cur == N_H_prev:
+                N_H_cur = sum(np.diag(qr(S_sq, mode='r')[0]) > 1e-12)
+                # N_H_cur = sum(eigvalsh(S_sq) > 1e-12)
+                if N_H_cur < N_H_prev + random_vectors - 1:
+                # if N_H_cur == N_H_prev:
+                    print('Calculation ended.')
+                    print('Found ' + str(N_H_cur) + ' eigenvalues.')
+                    matrix_proj_sq = matrix_proj.reshape(N, N)
+                    H_red = svd_decomposition(S_sq, matrix_proj_sq)
                     return eigvalsh(H_red)
                 else:
+                    print('Runing the ' + str(N_loop) + '-th loop')
+                    print('Found ' + str(N_H_cur) + ' eigenvalues so far.')
                     N_H_prev = N_H_cur
             N_loop += 1

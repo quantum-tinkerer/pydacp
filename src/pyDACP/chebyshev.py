@@ -125,11 +125,7 @@ def construct_matrix(k_list_i, k_list_j, storage_list, S_xy):
     S = 0.5 * (s_xy[ind_p] + s_xy[ind_m])
     i_size = len(k_list_i)
     j_size = len(k_list_j)
-    shape = (
-        i_size,
-        j_size,
-        *shape_S_xy
-    )
+    shape = (i_size, j_size, *shape_S_xy)
     S = np.reshape(S, shape)
     S = np.transpose(S, axes=[0, 2, 3, 1, 4, 5])
 
@@ -149,33 +145,51 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
     index_generator = index_generator_fn(dk)
     chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
     storage_list = [next(index_generator)]
-    k_list = [0, dk-1, dk]
+    k_list = [0, dk - 1, dk]
     k_latest = 0
     eig_pairs = 1
-    v_0 = v_proj[np.newaxis,]
+    v_0 = v_proj[
+        np.newaxis,
+    ]
 
     while True:
         v_n = next(chebyshev_recursion)
         if k_latest == storage_list[-1]:
             storage_list.append(next(index_generator))
-            S_xy.append(np.einsum('sir,dil->srdl', v_0.conj(), v_n[np.newaxis,]))
-            H_v_n = matrix@v_n
-            matrix_xy.append(np.einsum('sir,dil->srdl', v_0.conj(), H_v_n[np.newaxis,]))
+            S_xy.append(
+                np.einsum(
+                    "sir,dil->srdl",
+                    v_0.conj(),
+                    v_n[
+                        np.newaxis,
+                    ],
+                )
+            )
+            H_v_n = matrix @ v_n
+            matrix_xy.append(
+                np.einsum(
+                    "sir,dil->srdl",
+                    v_0.conj(),
+                    H_v_n[
+                        np.newaxis,
+                    ],
+                )
+            )
 
-        if 2*eig_pairs*dk + 1 == k_latest:
+        if 2 * eig_pairs * dk + 1 == k_latest:
             S = construct_matrix(k_list, k_list, storage_list, S_xy)
             matrix_proj = construct_matrix(k_list, k_list, storage_list, matrix_xy)
             N = int(np.sqrt(S.size))
             S_sq = S.reshape((N, N))
-            matrix_proj_sq = matrix_proj.reshape((N,N))
+            matrix_proj_sq = matrix_proj.reshape((N, N))
             q_S, r_S = qr(S_sq)
             ortho_condition = np.abs(np.diag(r_S)) < 1e-12
             if ortho_condition.any():
                 return v_0, k_list, S, matrix_proj
             else:
                 eig_pairs += 1
-                k_list.append(k_list[-1]+dk-1)
-                k_list.append(k_list[-2]+dk)
+                k_list.append(k_list[-1] + dk - 1)
+                k_list.append(k_list[-2] + dk)
         k_latest += 1
 
 
@@ -187,17 +201,35 @@ def eigvals_deg(v_prev, v_proj, k_list, S_prev, matrix_prev, G_operator, matrix,
     storage_list = [next(index_generator)]
     k_latest = 0
 
-    v_0 = v_proj[np.newaxis,]
+    v_0 = v_proj[
+        np.newaxis,
+    ]
     v_0 = np.concatenate((v_prev, v_0))
     while True:
         v_n = next(chebyshev_recursion)
         if k_latest == storage_list[-1]:
             storage_list.append(next(index_generator))
-            S_xy.append(np.einsum('sir,dil->srdl', v_0.conj(), v_n[np.newaxis,]))
-            H_v_n = matrix@v_n
-            matrix_xy.append(np.einsum('sir,dil->srdl', v_0.conj(), H_v_n[np.newaxis,]))
+            S_xy.append(
+                np.einsum(
+                    "sir,dil->srdl",
+                    v_0.conj(),
+                    v_n[
+                        np.newaxis,
+                    ],
+                )
+            )
+            H_v_n = matrix @ v_n
+            matrix_xy.append(
+                np.einsum(
+                    "sir,dil->srdl",
+                    v_0.conj(),
+                    H_v_n[
+                        np.newaxis,
+                    ],
+                )
+            )
 
-        if 2*k_list[-1]+1 == k_latest:
+        if 2 * k_list[-1] + 1 == k_latest:
             S = construct_matrix(k_list, k_list, storage_list, S_xy)
             matrix_proj = construct_matrix(k_list, k_list, storage_list, matrix_xy)
 
