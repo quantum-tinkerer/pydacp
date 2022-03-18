@@ -127,15 +127,33 @@ def construct_matrix(k_list_i, k_list_j, storage_list, S_xy):
     j_size = len(k_list_j)
     shape = (i_size, j_size, *shape_S_xy)
     S = np.reshape(S, shape)
-    S = np.transpose(S, axes=[0, 2, 3, 1, 4, 5])
+    S = np.transpose(S, axes=[2, 0, 3, 4, 1, 5])
 
     return S
 
 
 def combine_loops(S_new, S_prev):
-    S_conj = np.transpose(S_new[:, :-1, :, :, :, :].conj(), axes=[3, 4, 5, 0, 1, 2])
-    S_c1 = np.concatenate((S_prev, S_conj), axis=1)
-    S_combined = np.concatenate((S_c1, S_new), axis=-2)
+    S_conj = np.transpose(S_new[:-1, :, :, :, :, :].conj(), axes=[3, 4, 5, 0, 1, 2])
+    n_conj, m_conj = np.prod(S_conj.shape[:3]), np.prod(S_conj.shape[3:])
+    S_conj = S_conj.reshape((n_conj, m_conj))
+    n_new, m_new = np.prod(S_new.shape[:3]), np.prod(S_new.shape[3:])
+    S_new = S_new.reshape((n_new, m_new))
+    S_c1 = np.concatenate((S_prev, S_conj), axis=0)
+    S_combined = np.concatenate((S_c1, S_new), axis=1)
+    return S_combined
+
+
+def combine_loops_fast(S_diag, S_offdiag, S_prev):
+    n_diag, m_diag = np.prod(S_diag.shape[:3]), np.prod(S_diag.shape[3:])
+    S_diag=S_diag.reshape((n_diag, m_diag))
+    n_off, m_off = np.prod(S_offdiag.shape[:3]), np.prod(S_offdiag.shape[3:])
+    S_offdiag=S_offdiag.reshape((n_off, m_off))
+    if S_diag.shape[0] > S_diag.shape[1]:
+        S_offdiag=np.concatenate((S_offdiag, S_diag[:-S_diag.shape[1]]), axis=0)
+        S_diag=S_diag[-S_diag.shape[1]:]
+    S_1 = np.concatenate((S_prev, S_offdiag), axis=1)
+    S_2 = np.concatenate((S_offdiag.T.conj(), S_diag), axis=1)
+    S_combined = np.concatenate((S_1, S_2), axis=0)
     return S_combined
 
 
@@ -180,10 +198,10 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
             S = construct_matrix(k_list, k_list, storage_list, S_xy)
             matrix_proj = construct_matrix(k_list, k_list, storage_list, matrix_xy)
             N = int(np.sqrt(S.size))
-            S_sq = S.reshape((N, N))
-            matrix_proj_sq = matrix_proj.reshape((N, N))
-            q_S, r_S = qr(S_sq)
-            ortho_condition = np.abs(np.diag(r_S)) < 1e-12
+            S = S.reshape((N, N))
+            matrix_proj = matrix_proj.reshape((N, N))
+            q_S, r_S = qr(S)
+            ortho_condition = np.diag(np.isclose(qr(S, mode="r")[0], 0))
             if ortho_condition.any():
                 return v_0, k_list, S, matrix_proj
             else:
@@ -193,7 +211,17 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
         k_latest += 1
 
 
-def eigvals_deg(v_prev, v_proj, k_list, S_prev, matrix_prev, G_operator, matrix, dk):
+def eigvals_deg(
+    v_prev,
+    v_proj,
+    k_list,
+    S_prev,
+    matrix_prev,
+    G_operator,
+    matrix,
+    dk,
+    n_evolution=True,
+):
     S_xy = []
     matrix_xy = []
     index_generator = index_generator_fn(dk)
@@ -230,10 +258,31 @@ def eigvals_deg(v_prev, v_proj, k_list, S_prev, matrix_prev, G_operator, matrix,
             )
 
         if 2 * k_list[-1] + 1 == k_latest:
-            S = construct_matrix(k_list, k_list, storage_list, S_xy)
-            matrix_proj = construct_matrix(k_list, k_list, storage_list, matrix_xy)
+            if not n_evolution:
+                S = construct_matrix(k_list, k_list, storage_list, S_xy)
+                matrix_proj = construct_matrix(k_list, k_list, storage_list, matrix_xy)
 
-            S = combine_loops(S, S_prev)
-            matrix_proj = combine_loops(matrix_proj, matrix_prev)
-            return v_0, S, matrix_proj
+                S = combine_loops(S, S_prev)
+                matrix_proj = combine_loops(matrix_proj, matrix_prev)
+                return v_0, S, matrix_proj
+            else:
+                S_xy = np.asarray(S_xy)
+                matrix_xy = np.asarray(matrix_xy)
+                S_offdiag = construct_matrix(
+                    k_list, [0], storage_list, S_xy[:, :n_evolution, :, :, :]
+                )
+                matrix_proj_offdiag = construct_matrix(
+                    k_list, [0], storage_list, matrix_xy[:, :n_evolution, :, :, :]
+                )
+
+                S_diag = construct_matrix(
+                    [0], [0], storage_list, S_xy[:, n_evolution:, :, :, :]
+                )
+                matrix_proj_diag = construct_matrix(
+                    [0], [0], storage_list, matrix_xy[:, n_evolution:, :, :, :]
+                )
+
+                S = combine_loops_fast(S_diag, S_offdiag, S_prev)
+                matrix_proj = combine_loops_fast(matrix_proj_diag, matrix_proj_offdiag, matrix_prev)
+                return v_0, S, matrix_proj
         k_latest += 1

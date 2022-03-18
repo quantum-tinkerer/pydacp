@@ -123,35 +123,26 @@ def dacp_eig(
 
     else:
         N_loop = 0
+        n_evolution = False
         while True:
             v_proj = get_filtered_vector()
             if N_loop == 0:
                 v_0, k_list, S, matrix_proj = chebyshev.eigvals_init(
                     v_proj, G_operator, matrix, dk
                 )
-                N = int(np.sqrt(S.size))
-                S_sq = S.reshape(N, N)
-                N_H_prev = sum(np.diag(qr(S_sq, mode='r')[0]) > 1e-15)
-                N_H_cur = sum(np.diag(np.invert(np.isclose(qr(S_sq, mode='r')[0], 0))))
-                # N_H_prev = sum(eigvalsh(S_sq) > 1e-12)
+                N_H_prev = sum(np.diag(np.invert(np.isclose(qr(S, mode='r')[0], 0))))
+                new_vals = N_H_prev
             else:
+                if new_vals <= random_vectors and not n_evolution:
+                    n_evolution = N_loop
                 v_0, S, matrix_proj = chebyshev.eigvals_deg(
-                    v_0, v_proj, k_list, S, matrix_proj, G_operator, matrix, dk
+                    v_0, v_proj, k_list, S, matrix_proj, G_operator, matrix, dk, n_evolution
                 )
-                N = int(np.sqrt(S.size))
-                S_sq = S.reshape(N, N)
-                # N_H_cur = sum(np.diag(qr(S_sq, mode='r')[0]) > 1e-15)
-                N_H_cur = sum(np.diag(np.invert(np.isclose(qr(S_sq, mode='r')[0], 0))))
-                # N_H_cur = sum(eigvalsh(S_sq) > 1e-12)
-                if N_H_cur < N_H_prev + random_vectors:
-                # if N_H_cur == N_H_prev:
-                    print('Calculation ended.')
-                    print('Found ' + str(N_H_cur) + ' eigenvalues.')
-                    matrix_proj_sq = matrix_proj.reshape(N, N)
-                    H_red = svd_decomposition(S_sq, matrix_proj_sq)
-                    return eigvalsh(H_red)
-                else:
-                    print('Runing the ' + str(N_loop) + '-th loop')
-                    print('Found ' + str(N_H_cur) + ' eigenvalues so far.')
+                N_H_cur = sum(np.diag(np.invert(np.isclose(qr(S, mode='r')[0], 0))))
+                new_vals = N_H_cur - N_H_prev
+                if new_vals > 0:
                     N_H_prev = N_H_cur
+                else:
+                    H_red = svd_decomposition(S, matrix_proj)
+                    return eigvalsh(H_red)
             N_loop += 1
