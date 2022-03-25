@@ -203,7 +203,7 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
             q_S, r_S = qr(S)
             ortho_condition = np.diag(np.isclose(qr(S, mode="r")[0], 0))
             if ortho_condition.any():
-                return v_0, k_list, S, matrix_proj
+                return v_0, k_list, S, matrix_proj, q_S, r_S
             else:
                 eig_pairs += 1
                 k_list.append(k_list[-1] + dk - 1)
@@ -256,16 +256,16 @@ def eigvals_deg(
                     ],
                 )
             )
-
-        if 2 * k_list[-1] + 1 == k_latest:
-            if not n_evolution:
+        if not n_evolution:
+            if 2 * k_list[-1] + 1 == k_latest:
                 S = construct_matrix(k_list, k_list, storage_list, S_xy)
                 matrix_proj = construct_matrix(k_list, k_list, storage_list, matrix_xy)
 
                 S = combine_loops(S, S_prev)
                 matrix_proj = combine_loops(matrix_proj, matrix_prev)
                 return v_0, S, matrix_proj
-            else:
+        else:
+            if k_list[-1] == k_latest:
                 S_xy = np.asarray(S_xy)
                 matrix_xy = np.asarray(matrix_xy)
                 S_offdiag = construct_matrix(

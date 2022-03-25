@@ -127,18 +127,40 @@ def dacp_eig(
         while True:
             v_proj = get_filtered_vector()
             if N_loop == 0:
-                v_0, k_list, S, matrix_proj = chebyshev.eigvals_init(
+                v_0, k_list, S, matrix_proj, q_S, r_S = chebyshev.eigvals_init(
                     v_proj, G_operator, matrix, dk
                 )
-                N_H_prev = sum(np.diag(np.invert(np.isclose(qr(S, mode='r')[0], 0))))
+                N_H_prev = sum(np.invert(np.isclose(np.diag(r_S), 0)))
                 new_vals = N_H_prev
             else:
                 if new_vals <= random_vectors and not n_evolution:
                     n_evolution = N_loop
                 v_0, S, matrix_proj = chebyshev.eigvals_deg(
-                    v_0, v_proj, k_list, S, matrix_proj, G_operator, matrix, dk, n_evolution
+                    v_0,
+                    v_proj,
+                    k_list,
+                    S,
+                    matrix_proj,
+                    G_operator,
+                    matrix,
+                    dk,
+                    n_evolution,
                 )
-                N_H_cur = sum(np.diag(np.invert(np.isclose(qr(S, mode='r')[0], 0))))
+                q_S, r_S = qr_insert(
+                    Q=q_S,
+                    R=r_S,
+                    u=S[:q_S.shape[0], q_S.shape[1]:],
+                    k=q_S.shape[1],
+                    which="col",
+                )
+                q_S, r_S = qr_insert(
+                    Q=q_S,
+                    R=r_S,
+                    u=S[q_S.shape[0]:, :],
+                    k=q_S.shape[0],
+                    which="row",
+                )
+                N_H_cur = sum(np.invert(np.isclose(np.diag(r_S), 0)))
                 new_vals = N_H_cur - N_H_prev
                 if new_vals > 0:
                     N_H_prev = N_H_cur
