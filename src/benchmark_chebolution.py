@@ -73,17 +73,19 @@ def sparse_diag(matrix, k, sigma, **kwargs):
 def benchmark(N, seed, dimension):
     syst = make_syst(N=N, dimension=dimension)
     H = syst.hamiltonian_submatrix(params=dict(seed=seed), sparse=True)
+    a=0.1
 
-    def sparse_benchmark():
-         return sparse_diag(H, sigma=0, k=100, which='LM', return_eigenvectors=True)[0]
+    def cheb_benchmark():
+        dacp = core.DACP_reduction(H, a=a, eps=0.05, return_eigenvectors=True, chebolution=True)
+        _, _ = eigh(dacp.get_subspace_matrix()[0])
     start_time = time.time()
-    sparse_memory, eigs=memory_usage(sparse_benchmark, max_usage=True, retval=True)
-    sparse_time=time.time() - start_time
+    cheb_memory=memory_usage(cheb_benchmark, max_usage=True)
+    cheb_time=time.time() - start_time
 
-    sparse_data = [sparse_time, sparse_memory]
+    cheb_data = [cheb_time, cheb_memory]
 
     def dacp_benchmark():
-        dacp = core.DACP_reduction(H, a=np.max(np.abs(eigs)), eps=0.05, return_eigenvectors=True, chebolution=False)
+        dacp = core.DACP_reduction(H, a=a, eps=0.05, return_eigenvectors=True, chebolution=False)
         _, _ = eigh(dacp.get_subspace_matrix()[0])
     start_time = time.time()
     dacp_memory=memory_usage(dacp_benchmark, max_usage=True)
@@ -91,7 +93,7 @@ def benchmark(N, seed, dimension):
 
     dacp_data = [dacp_time, dacp_memory]
 
-    return sparse_data, dacp_data
+    return cheb_data, dacp_data
 
 
 # +
@@ -123,7 +125,7 @@ da = xr.DataArray(
     dims=[*params.keys(), 'output'],
     coords={
         **params,
-        'output': ['sparsetime', 'sparsemem', 'dacptime', 'dacpmem']
+        'output': ['chebtime', 'chebmem', 'dacptime', 'dacpmem']
     }
 )
 
@@ -137,32 +139,30 @@ plt.rcParams['lines.linewidth'] = 2
 plt.rcParams['font.size'] = 15
 plt.rcParams['legend.fontsize'] = 15
 
-da_mean.sel(dimensions=2).sel(output=['dacptime', 'sparsetime']).plot(hue='output')
+da_mean.sel(dimensions=2).sel(output=['dacptime', 'chebtime']).plot(hue='output')
 plt.xscale('log')
 plt.yscale('log')
 plt.tight_layout()
-plt.savefig('time_2d.png')
+plt.savefig('time_2d_cheb.png')
 plt.show()
 
-da_mean.sel(dimensions=2).sel(output=['dacpmem', 'sparsemem']).plot(hue='output')
+da_mean.sel(dimensions=2).sel(output=['dacpmem', 'chebmem']).plot(hue='output')
 plt.xscale('log')
 plt.yscale('log')
 plt.tight_layout()
-plt.savefig('mem_2d.png')
+plt.savefig('mem_2d_cheb.png')
 plt.show()
 
-da_mean.sel(dimensions=3).sel(output=['dacptime', 'sparsetime']).plot(hue='output')
+da_mean.sel(dimensions=3).sel(output=['dacptime', 'chebtime']).plot(hue='output')
 plt.xscale('log')
 plt.yscale('log')
 plt.tight_layout()
-plt.savefig('time_3d.png')
+plt.savefig('time_3d_cheb.png')
 plt.show()
 
-da_mean.sel(dimensions=3).sel(output=['dacpmem', 'sparsemem']).plot(hue='output')
+da_mean.sel(dimensions=3).sel(output=['dacpmem', 'chebmem']).plot(hue='output')
 plt.xscale('log')
 plt.yscale('log')
 plt.tight_layout()
-plt.savefig('mem_3d.png')
+plt.savefig('mem_3d_cheb.png')
 plt.show()
-
-da.to_netcdf('./benchmark_data')

@@ -1,160 +1,170 @@
 from scipy.sparse.linalg import eigsh
-from scipy.sparse import eye
-from scipy.linalg import eigh
-from scipy.integrate import quad
-import kwant
+from scipy.sparse import eye, csr_matrix
+from scipy.linalg import eigh, eigvalsh, qr, qr_insert
 from . import chebyshev
 import numpy as np
-from math import floor, ceil
-import itertools as it
+from math import ceil
+import matplotlib.pyplot as plt
 
 
-class DACP_reduction:
+def svd_decomposition(S, matrix_proj):
+    s, V = eigh(S)
+    indx = s > 1e-12
+    lambda_s = np.diag(1 / np.sqrt(s[indx]))
+    U = V[:, indx] @ lambda_s
+    return U.T.conj() @ matrix_proj @ U
 
-    def __init__(self, matrix, a, eps, bounds=None, sampling_subspace=2, random_vectors=1, return_eigenvectors=False):
-        """Find the spectral bounds of a given matrix.
 
-        Parameters
-        ----------
-        matrix : 2D array
-            Initial matrix.
-        eps : scalar
-            Ensures that the bounds are strict.
-        bounds : tuple, or None
-            Boundaries of the spectrum. If not provided the maximum and
-            minimum eigenvalues are calculated.
-        """
-        self.matrix = matrix
-        self.a = a
-        self.eps = eps
-        self.return_eigenvectors = return_eigenvectors
-        if bounds:
-            self.bounds = bounds
-        else:
-            self.find_bounds()
-        self.sampling_subspace = sampling_subspace
-        self.random_vectors = random_vectors
+def dacp_eig(
+    matrix,
+    a,
+    eps=0.1,
+    bounds=None,
+    random_vectors=2,
+    return_eigenvectors=False,
+    filter_order=12,
+):
+    """
+    Find the eigendecomposition within the given spectral bounds of a given matrix.
 
-    def find_bounds(self, method='sparse_diagonalization'):
+    Parameters
+    ----------
+    matrix : 2D array or sparse matrix
+        Initial matrix.
+    eps : float
+        Ensures that the bounds are strict.
+    bounds : tuple, or None
+        Boundaries of the spectrum. If not provided the maximum and
+        minimum eigenvalues are calculated.
+    random_vectors : int
+        When return_eigenvectors=False, specifies the maximum expected
+        degeneracy of the matrix.
+    return_eigenvectors : bool
+        If True, returns eigenvectors and processes general degeneracies.
+        However, if False, the algorithm conserves memory
+        and only processes random_vectors>degenerecies.
+    filter_order : int
+        The number of times a vector is filtered is given by filter_order*E_max/a.
+    """
+    matrix = csr_matrix(matrix)
+
+    if bounds is None:
         # Relative tolerance to which to calculate eigenvalues.  Because after
         # rescaling we will add eps / 2 to the spectral bounds, we don't need
         # to know the bounds more accurately than eps / 2.
-        tol = self.eps / 2
+        tol = eps / 2
 
-        lmax = float(eigsh(self.matrix, k=1, which='LA',
-                           return_eigenvectors=False, tol=tol))
-        lmin = float(eigsh(self.matrix, k=1, which='SA',
-                           return_eigenvectors=False, tol=tol))
+        lmax = float(eigsh(matrix, k=1, which="LA", return_eigenvectors=False, tol=tol))
+        lmin = float(eigsh(matrix, k=1, which="SA", return_eigenvectors=False, tol=tol))
 
         if lmax - lmin <= abs(lmax + lmin) * tol / 2:
             raise ValueError(
-                'The matrix has a single eigenvalue, it is not possible to '
-                'obtain a spectral density.')
+                "The matrix has a single eigenvalue, it is not possible to "
+                "obtain a spectral density."
+            )
 
-        self.bounds = [lmin, lmax]
+        bounds = [lmin, lmax]
 
-    def G_operator(self):
-        # TODO: generalize for intervals away from zero energy
-        Emin = self.bounds[0] * (1 + self.eps)
-        Emax = self.bounds[1] * (1 + self.eps)
-        E0 = (Emax - Emin)/2
-        Ec = (Emax + Emin)/2
-        return (self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
+    Emin = bounds[0] * (1 + eps)
+    Emax = bounds[1] * (1 + eps)
+    E0 = (Emax - Emin) / 2
+    Ec = (Emax + Emin) / 2
+    G_operator = (matrix - eye(matrix.shape[0]) * Ec) / E0
 
-    def F_operator(self):
-        # TODO: generalize for intervals away from zero energy
-        Emax = np.max(np.abs(self.bounds)) * (1 + self.eps)
-        E0 = (Emax**2 - self.a**2)/2
-        Ec = (Emax**2 + self.a**2)/2
-        return (self.matrix @ self.matrix - eye(self.matrix.shape[0]) * Ec) / E0
+    Emax = np.max(np.abs(bounds)) * (1 + eps)
+    E0 = (Emax ** 2 - a ** 2) / 2
+    Ec = (Emax ** 2 + a ** 2) / 2
+    F_operator = (matrix @ matrix - eye(matrix.shape[0]) * Ec) / E0
 
-    def get_filtered_vector(self):
-        # TODO: check whether we need complex vector
-        v_rand = 2 * (np.random.rand(self.matrix.shape[0]) + np.random.rand(
-            self.matrix.shape[0])*1j - 0.5 * (1 + 1j))
-        v_rand = v_rand/np.linalg.norm(v_rand)
-        K_max = int(20 * np.max(np.abs(self.bounds)) / self.a)
-        vec = chebyshev.low_E_filter(v_rand, self.F_operator(), K_max)
-        return vec / np.linalg.norm(vec)
-
-    def estimate_subspace_dimenstion(self):
-        dos_estimate = kwant.kpm.SpectralDensity(
-            self.matrix,
-            energy_resolution=self.a/4,
-            mean=True,
-            bounds=self.bounds
+    def get_filtered_vector():
+        v_rand = 2 * (
+            np.random.rand(matrix.shape[0], random_vectors)
+            + np.random.rand(matrix.shape[0], random_vectors) * 1j
+            - 0.5 * (1 + 1j)
         )
-        return int(np.abs(quad(dos_estimate, -self.a, self.a))[0])
+        v_rand = v_rand / np.linalg.norm(v_rand, axis=0)
+        K_max = int(filter_order * np.max(np.abs(bounds)) / a)
+        vec = chebyshev.low_E_filter(v_rand, F_operator, K_max)
+        return vec / np.linalg.norm(vec, axis=0)
 
-    def svd_matrix(self, matrix_proj, S):
-        s, V = eigh(S)
-        indx = np.abs(s) > 1e-12
-        lambda_s = np.diag(1/np.sqrt(s[indx]))
-        U = V[:, indx]@lambda_s
-        return U.T.conj() @ matrix_proj @ U
+    a_r = a / np.max(np.abs(bounds))
+    dk = ceil(np.pi / a_r)
+    a_r = a / np.max(np.abs(bounds))
 
-    def direct_eigenvalues(self):
-        d = self.estimate_subspace_dimenstion()
-        n = int(np.abs((d*self.sampling_subspace - 1)/2))
-        a_r = self.a / np.max(np.abs(self.bounds))
-        dk = np.pi / a_r
-
-        n_array = np.arange(1, n+1, 1)
-        indices = np.floor(n_array * dk)
-        ks = np.unique(np.array([0, *indices, *indices-1])).astype(int)
-        ks_list = np.array(list(it.product(ks, ks)))
-
-        xpy = np.sum(ks_list, axis=1).astype(int)
-        xmy = np.abs(ks_list[:, 0] - ks_list[:, 1]).astype(int)
-
-        indices_to_store = np.unique(np.concatenate((xpy, xmy)))
-
-        v_proj = self.get_filtered_vector()
-
-        S_xy, H_xy = chebyshev.basis_no_store(
-            v_proj=v_proj,
-            matrix=self.G_operator(),
-            H=self.matrix,
-            indices_to_store=indices_to_store
+    if return_eigenvectors:
+        # First run
+        Q, R = chebyshev.basis(
+            v_proj=get_filtered_vector(), G_operator=G_operator, dk=dk
         )
+        # Second run
+        Qi, Ri = chebyshev.basis(
+            v_proj=get_filtered_vector(),
+            G_operator=G_operator,
+            dk=dk,
+            Q=Q,
+            R=R,
+            first_run=False,
+        )
+        # Other runs to solve higher degeneracies
+        while Q.shape[1] < Qi.shape[1]:
+            Q, R = Qi, Ri
+            Qi, Ri = chebyshev.basis(
+                v_proj=get_filtered_vector(),
+                G_operator=G_operator,
+                dk=dk,
+                Q=Q,
+                R=R,
+                first_run=False,
+            )
+        v_basis = Q
+        matrix_proj = v_basis.conj().T @ matrix.dot(v_basis)
+        eigvals, eigvecs = eigh(matrix_proj)
+        return eigvals, eigvecs @ v_basis.T
 
-        ind_p = np.searchsorted(indices_to_store, xpy)
-        ind_m = np.searchsorted(indices_to_store, xmy)
-
-        S = 0.5 * (S_xy[ind_p] + S_xy[ind_m])
-        matrix_proj = 0.5 * (H_xy[ind_p] + H_xy[ind_m])
-
-        m = len(ks)
-        S = np.reshape(S, (m, m))
-        matrix_proj = np.reshape(matrix_proj, (m, m))
-        return self.svd_matrix(matrix_proj, S)
-
-    def span_basis(self):
-        d = self.estimate_subspace_dimenstion()
-        n = int(np.abs((d*self.sampling_subspace - 1)/2))
-        # Divide by the number of random vectors
-        n = int(n/int(self.random_vectors))
-        a_r = self.a / np.max(np.abs(self.bounds))
-        n_array = np.arange(1, n+1, 1)
-        dk = np.pi / a_r
-        indicesp1 = (n_array * dk)
-        indices = np.unique(
-            np.array([0, *indicesp1, *indicesp1-1])).astype(int)
-        basis = []
-        for i in range(self.random_vectors):
-            v_proj = self.get_filtered_vector()
-            basis.append(chebyshev.basis(
-                v_proj=v_proj, matrix=self.G_operator(), indices=indices))
-        self.v_basis = np.concatenate(np.asarray(basis))
-
-    def eigenvalues_and_eigenvectors(self):
-        self.span_basis()
-        S = self.v_basis.conj() @ self.v_basis.T
-        matrix_proj = self.v_basis.conj() @ self.matrix.dot(self.v_basis.T)
-        return self.svd_matrix(matrix_proj, S)
-
-    def get_subspace_matrix(self):
-        if self.return_eigenvectors:
-            return self.eigenvalues_and_eigenvectors()
-        else:
-            return self.direct_eigenvalues()
+    else:
+        N_loop = 0
+        n_evolution = False
+        while True:
+            v_proj = get_filtered_vector()
+            if N_loop == 0:
+                v_0, k_list, S, matrix_proj, q_S, r_S = chebyshev.eigvals_init(
+                    v_proj, G_operator, matrix, dk
+                )
+                N_H_prev = sum(np.invert(np.isclose(np.diag(r_S), 0)))
+                new_vals = N_H_prev
+            else:
+                if new_vals <= random_vectors and not n_evolution:
+                    n_evolution = N_loop
+                v_0, S, matrix_proj = chebyshev.eigvals_deg(
+                    v_0,
+                    v_proj,
+                    k_list,
+                    S,
+                    matrix_proj,
+                    G_operator,
+                    matrix,
+                    dk,
+                    n_evolution,
+                )
+                q_S, r_S = qr_insert(
+                    Q=q_S,
+                    R=r_S,
+                    u=S[:q_S.shape[0], q_S.shape[1]:],
+                    k=q_S.shape[1],
+                    which="col",
+                )
+                q_S, r_S = qr_insert(
+                    Q=q_S,
+                    R=r_S,
+                    u=S[q_S.shape[0]:, :],
+                    k=q_S.shape[0],
+                    which="row",
+                )
+                N_H_cur = sum(np.invert(np.isclose(np.diag(r_S), 0)))
+                new_vals = N_H_cur - N_H_prev
+                if new_vals > 0:
+                    N_H_prev = N_H_cur
+                else:
+                    H_red = svd_decomposition(S, matrix_proj)
+                    return eigvalsh(H_red)
+            N_loop += 1
