@@ -164,3 +164,5 @@ plt.yscale('log')
 plt.tight_layout()
 plt.savefig('mem_3d.png')
 plt.show()
+
+da.to_netcdf('./benchmark_data')
