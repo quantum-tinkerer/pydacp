@@ -8,10 +8,10 @@ from math import ceil
 def svd_decomposition(S, matrix):
     """
     Perform SVD decomposition.
-    
+
     Parameters:
     -----------
-    
+
     S : ndarray
         Overlap matrix.
     matrix : ndarray
@@ -135,10 +135,10 @@ def index_generator_fn(dk):
 def construct_matrix(k_list_i, k_list_j, storage_list, S_xy):
     """
     Construct matrices with list of S_xy and M_xy.
-    
+
     Parameters:
     -----------
-    
+
     k_list_i : integer
         Number of lines.
     k_list_j : integer
@@ -170,10 +170,10 @@ def construct_matrix(k_list_i, k_list_j, storage_list, S_xy):
 def combine_loops(S_new, S_prev):
     """
     Combine previous and new matrix entries.
-    
+
     Paramters:
     ----------
-    
+
     S_new : ndarray
         New array with elements.
     S_prev : ndarray
@@ -192,7 +192,7 @@ def combine_loops(S_new, S_prev):
 def combine_loops_fast(S_diag, S_offdiag, S_prev):
     """
     Combine loops after the two first runs.
-    
+
     S_diag : ndarray
         Diagonal block of the new matrix.
     S_offdiag : ndarray
@@ -216,7 +216,7 @@ def combine_loops_fast(S_diag, S_offdiag, S_prev):
 def eigvals_init(v_proj, G_operator, matrix, dk):
     """
     Compute eigenvalues for initial run.
-    
+
     v_proj : ndarray
         Filtered random vector.
     G_operator : ndarray
@@ -292,7 +292,7 @@ def eigvals_deg(
 ):
     """
     Compute eigenvalues for initial run.
-    
+
     v_prev : ndarray
         Filtered vectors from previous runs.
     v_proj : ndarray
@@ -449,7 +449,7 @@ def eigh(
         )
         v_rand = v_rand / np.linalg.norm(v_rand, axis=0)
         K_max = int(filter_order * np.max(np.abs(bounds)) / a)
-        vec = chebyshev.low_E_filter(v_rand, F_operator, K_max)
+        vec = low_E_filter(v_rand, F_operator, K_max)
         return vec / np.linalg.norm(vec, axis=0)
 
     a_r = a / np.max(np.abs(bounds))
@@ -457,11 +457,9 @@ def eigh(
 
     if return_eigenvectors:
         # First run
-        Q, R = chebyshev.basis(
-            v_proj=get_filtered_vector(), G_operator=G_operator, dk=dk
-        )
+        Q, R = basis(v_proj=get_filtered_vector(), G_operator=G_operator, dk=dk)
         # Second run
-        Qi, Ri = chebyshev.basis(
+        Qi, Ri = basis(
             v_proj=get_filtered_vector(),
             G_operator=G_operator,
             dk=dk,
@@ -472,7 +470,7 @@ def eigh(
         # Other runs to solve higher degeneracies
         while Q.shape[1] < Qi.shape[1]:
             Q, R = Qi, Ri
-            Qi, Ri = chebyshev.basis(
+            Qi, Ri = basis(
                 v_proj=get_filtered_vector(),
                 G_operator=G_operator,
                 dk=dk,
@@ -494,7 +492,7 @@ def eigh(
         while True:
             v_proj = get_filtered_vector()
             if N_loop == 0:
-                v_0, k_list, S, matrix_proj, q_S, r_S = chebyshev.eigvals_init(
+                v_0, k_list, S, matrix_proj, q_S, r_S = eigvals_init(
                     v_proj, G_operator, matrix, dk
                 )
                 N_H_prev = sum(np.invert(np.isclose(np.diag(r_S), 0)))
@@ -502,7 +500,7 @@ def eigh(
             else:
                 if new_vals <= random_vectors and not n_evolution:
                     n_evolution = N_loop
-                v_0, S, matrix_proj = chebyshev.eigvals_deg(
+                v_0, S, matrix_proj = eigvals_deg(
                     v_0,
                     v_proj,
                     k_list,
