@@ -5,12 +5,23 @@ import numpy as np
 from math import ceil
 
 
-def svd_decomposition(S, matrix_proj):
+def svd_decomposition(S, matrix):
+    """
+    Perform SVD decomposition.
+    
+    Parameters:
+    -----------
+    
+    S : ndarray
+        Overlap matrix.
+    matrix : ndarray
+        Matrix to project.
+    """
     s, V = eigh(S)
     indx = s > 1e-12
     lambda_s = np.diag(1 / np.sqrt(s[indx]))
     U = V[:, indx] @ lambda_s
-    return U.T.conj() @ matrix_proj @ U
+    return U.T.conj() @ matrix @ U
 
 
 def chebyshev_recursion_gen(matrix, v_0):
@@ -122,6 +133,21 @@ def index_generator_fn(dk):
 
 
 def construct_matrix(k_list_i, k_list_j, storage_list, S_xy):
+    """
+    Construct matrices with list of S_xy and M_xy.
+    
+    Parameters:
+    -----------
+    
+    k_list_i : integer
+        Number of lines.
+    k_list_j : integer
+        Number of columns.
+    storage_list : list
+        List of indices.
+    S_xy : list
+        List of S_xy elements.
+    """
     shape_S_xy = S_xy[0].shape
     k_products = np.array(list(it.product(k_list_i, k_list_j)))
     xpy = np.sum(k_products, axis=1).astype(int)
@@ -142,6 +168,17 @@ def construct_matrix(k_list_i, k_list_j, storage_list, S_xy):
 
 
 def combine_loops(S_new, S_prev):
+    """
+    Combine previous and new matrix entries.
+    
+    Paramters:
+    ----------
+    
+    S_new : ndarray
+        New array with elements.
+    S_prev : ndarray
+        Previous array with elements.
+    """
     S_conj = np.transpose(S_new[:-1, :, :, :, :, :].conj(), axes=[3, 4, 5, 0, 1, 2])
     n_conj, m_conj = np.prod(S_conj.shape[:3]), np.prod(S_conj.shape[3:])
     S_conj = S_conj.reshape((n_conj, m_conj))
@@ -153,6 +190,16 @@ def combine_loops(S_new, S_prev):
 
 
 def combine_loops_fast(S_diag, S_offdiag, S_prev):
+    """
+    Combine loops after the two first runs.
+    
+    S_diag : ndarray
+        Diagonal block of the new matrix.
+    S_offdiag : ndarray
+        Off-diagonal block of the new matrix.
+    S_prev : ndarray
+        Previous matrix block.
+    """
     n_diag, m_diag = np.prod(S_diag.shape[:3]), np.prod(S_diag.shape[3:])
     S_diag = S_diag.reshape((n_diag, m_diag))
     n_off, m_off = np.prod(S_offdiag.shape[:3]), np.prod(S_offdiag.shape[3:])
@@ -167,6 +214,18 @@ def combine_loops_fast(S_diag, S_offdiag, S_prev):
 
 
 def eigvals_init(v_proj, G_operator, matrix, dk):
+    """
+    Compute eigenvalues for initial run.
+    
+    v_proj : ndarray
+        Filtered random vector.
+    G_operator : ndarray
+        Subspace generator.
+    matrix : ndarray
+        Matrix to compute eigenvalues.
+    dk : integer
+        Largest Chebyshev evolution order.
+    """
     S_xy = []
     matrix_xy = []
     index_generator = index_generator_fn(dk)
@@ -231,6 +290,23 @@ def eigvals_deg(
     dk,
     n_evolution=True,
 ):
+    """
+    Compute eigenvalues for initial run.
+    
+    v_prev : ndarray
+        Filtered vectors from previous runs.
+    v_proj : ndarray
+        Filtered random vector.
+    k_list : list
+        List of indices from first run.
+    G_operator : ndarray
+        Subspace generator.
+    matrix : ndarray
+        Matrix to compute eigenvalues.
+    dk : integer
+        Largest Chebyshev evolution order.
+    n_evolution : bool
+    """
     S_xy = []
     matrix_xy = []
     index_generator = index_generator_fn(dk)
