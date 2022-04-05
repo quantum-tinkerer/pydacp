@@ -3,6 +3,7 @@ from scipy.sparse import eye, csr_matrix
 from scipy.linalg import eigh, eigvalsh, qr, qr_insert
 import numpy as np
 from math import ceil
+import itertools as it
 
 
 def svd_decomposition(S, matrix):
