@@ -12,6 +12,7 @@ def svd_decomposition(S, matrix_proj):
     U = V[:, indx] @ lambda_s
     return U.T.conj() @ matrix_proj @ U
 
+
 def chebyshev_recursion_gen(matrix, v_0):
     """
     Recursively apply Chebyshev polynomials of a matrix.
@@ -153,12 +154,12 @@ def combine_loops(S_new, S_prev):
 
 def combine_loops_fast(S_diag, S_offdiag, S_prev):
     n_diag, m_diag = np.prod(S_diag.shape[:3]), np.prod(S_diag.shape[3:])
-    S_diag=S_diag.reshape((n_diag, m_diag))
+    S_diag = S_diag.reshape((n_diag, m_diag))
     n_off, m_off = np.prod(S_offdiag.shape[:3]), np.prod(S_offdiag.shape[3:])
-    S_offdiag=S_offdiag.reshape((n_off, m_off))
+    S_offdiag = S_offdiag.reshape((n_off, m_off))
     if S_diag.shape[0] > S_diag.shape[1]:
-        S_offdiag=np.concatenate((S_offdiag, S_diag[:-S_diag.shape[1]]), axis=0)
-        S_diag=S_diag[-S_diag.shape[1]:]
+        S_offdiag = np.concatenate((S_offdiag, S_diag[: -S_diag.shape[1]]), axis=0)
+        S_diag = S_diag[-S_diag.shape[1] :]
     S_1 = np.concatenate((S_prev, S_offdiag), axis=1)
     S_2 = np.concatenate((S_offdiag.T.conj(), S_diag), axis=1)
     S_combined = np.concatenate((S_1, S_2), axis=0)
@@ -291,12 +292,14 @@ def eigvals_deg(
                 )
 
                 S = combine_loops_fast(S_diag, S_offdiag, S_prev)
-                matrix_proj = combine_loops_fast(matrix_proj_diag, matrix_proj_offdiag, matrix_prev)
+                matrix_proj = combine_loops_fast(
+                    matrix_proj_diag, matrix_proj_offdiag, matrix_prev
+                )
                 return v_0, S, matrix_proj
         k_latest += 1
 
 
-def dacp_eig(
+def eigh(
     matrix,
     window_size,
     eps=0.1,
@@ -437,14 +440,14 @@ def dacp_eig(
                 q_S, r_S = qr_insert(
                     Q=q_S,
                     R=r_S,
-                    u=S[:q_S.shape[0], q_S.shape[1]:],
+                    u=S[: q_S.shape[0], q_S.shape[1] :],
                     k=q_S.shape[1],
                     which="col",
                 )
                 q_S, r_S = qr_insert(
                     Q=q_S,
                     R=r_S,
-                    u=S[q_S.shape[0]:, :],
+                    u=S[q_S.shape[0] :, :],
                     k=q_S.shape[0],
                     which="row",
                 )
