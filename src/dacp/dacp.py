@@ -1,12 +1,12 @@
 from scipy.sparse.linalg import eigsh
 from scipy.sparse import eye, csr_matrix
-from scipy.linalg import eigh, eigvalsh, qr, qr_insert
+from scipy.linalg import eigh, eigvalsh, qr, qr_insert, orth, svd
 import numpy as np
 from math import ceil
 import itertools as it
 
 
-def svd_decomposition(S, matrix):
+def svd_decomposition(S, matrix_proj):
     """
     Perform SVD decomposition.
 
@@ -15,14 +15,14 @@ def svd_decomposition(S, matrix):
 
     S : ndarray
         Overlap matrix.
-    matrix : ndarray
-        Matrix to project.
+    matrix_proj : ndarray
+        Projected matrix.
     """
     s, V = eigh(S)
     indx = s > 1e-12
     lambda_s = np.diag(1 / np.sqrt(s[indx]))
     U = V[:, indx] @ lambda_s
-    return U.T.conj() @ matrix @ U
+    return U.T.conj() @ matrix_proj @ U
 
 
 def chebyshev_recursion_gen(matrix, v_0):
@@ -376,7 +376,7 @@ def eigvals_deg(
         k_latest += 1
 
 
-def eigh(
+def dacp_eigh(
     matrix,
     window_size,
     eps=0.1,
