@@ -17,12 +17,13 @@ def svd_decomposition(S, matrix_proj):
 
 def dacp_eig(
     matrix,
-    a,
+    window_size,
     eps=0.1,
     bounds=None,
     random_vectors=2,
     return_eigenvectors=False,
-    filter_order=12,
+    filter_order=14,
+    error_window=0.2
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -30,7 +31,9 @@ def dacp_eig(
     Parameters
     ----------
     matrix : 2D array or sparse matrix
-        Initial matrix.
+        Real of complex Hermitian matrix to diagonalize.
+    window_size : float
+        Energy window around zero for which to solve the eigenproblem.
     eps : float
         Ensures that the bounds are strict.
     bounds : tuple, or None
@@ -45,8 +48,9 @@ def dacp_eig(
         and only processes random_vectors>degenerecies.
     filter_order : int
         The number of times a vector is filtered is given by filter_order*E_max/a.
+    error_window : float
+        The fraction by which to expands the window size to account for errors.
     """
-    matrix = csr_matrix(matrix)
 
     if bounds is None:
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -71,6 +75,7 @@ def dacp_eig(
     Ec = (Emax + Emin) / 2
     G_operator = (matrix - eye(matrix.shape[0]) * Ec) / E0
 
+    a = window_size*(1+error_window)
     Emax = np.max(np.abs(bounds)) * (1 + eps)
     E0 = (Emax ** 2 - a ** 2) / 2
     Ec = (Emax ** 2 + a ** 2) / 2
@@ -89,7 +94,6 @@ def dacp_eig(
 
     a_r = a / np.max(np.abs(bounds))
     dk = ceil(np.pi / a_r)
-    a_r = a / np.max(np.abs(bounds))
 
     if return_eigenvectors:
         # First run
@@ -119,7 +123,10 @@ def dacp_eig(
         v_basis = Q
         matrix_proj = v_basis.conj().T @ matrix.dot(v_basis)
         eigvals, eigvecs = eigh(matrix_proj)
-        return eigvals, eigvecs @ v_basis.T
+        eigvecs = eigvecs @ v_basis.T
+
+        window_args = np.abs(eigvals) < window_size
+        return eigvals[window_args], eigvecs[window_args, :]
 
     else:
         N_loop = 0
@@ -166,5 +173,7 @@ def dacp_eig(
                     N_H_prev = N_H_cur
                 else:
                     H_red = svd_decomposition(S, matrix_proj)
-                    return eigvalsh(H_red)
+                    eigvals = eigvalsh(H_red)
+                    window_args = np.abs(eigvals) < window_size
+                    return eigvals[window_args]
             N_loop += 1

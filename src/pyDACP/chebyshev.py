@@ -79,7 +79,7 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
                 Q, R = qr_insert(
                     Q=Q, R=R, u=vec, k=Q.shape[1], which="col", overwrite_qru=True
                 )
-                ortho_condition = np.abs(np.diag(R)) < 1e-12
+                ortho_condition = np.abs(np.diag(R)) < 1e-8
                 if ortho_condition.any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
