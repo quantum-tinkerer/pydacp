@@ -34,11 +34,10 @@
 # Let's see an example!
 
 # +
-from dacp.dacp import dacp_eigh
+from dacp.dacp import eigh
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
-from scipy.linalg import eigh, eig, eigvalsh
 from scipy.sparse import diags, eye
 from scipy.sparse.linalg import eigsh
 
@@ -59,7 +58,7 @@ H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
 # -
 
 # %%time
-evals = dacp_eigh(
+evals = eigh(
     H, window_size=0.1, eps=0.05, random_vectors=2, return_eigenvectors=False, filter_order=14
 )
 
@@ -125,7 +124,7 @@ plt.show()
 H=fsyst.hamiltonian_submatrix(sparse=True)
 
 # %%time
-evals=dacp_eigh(H, window_size=0.1, eps=0.05, random_vectors=2, return_eigenvectors=False, filter_order=12)
+evals=eigh(H, window_size=0.1, eps=0.05, random_vectors=2, return_eigenvectors=False, filter_order=12)
 
 # %%time
 true_vals = eigsh(H, return_eigenvectors=False, sigma=1e-10, k=evals.shape[0], which='LM')

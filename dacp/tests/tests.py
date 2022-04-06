@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from dacp.dacp import dacp_eigh
+from dacp.dacp import eigh
 from scipy.sparse import csr_matrix
 
 # +
@@ -21,9 +21,9 @@ H = csr_matrix(H)
 def eigv_errors(H, window_size, **dacp_kwargs):
     eigv, eigs = np.linalg.eigh(H.todense())
     if dacp_kwargs:
-        eigv_dacp = dacp_eigh(H, window_size, **dacp_kwargs)
+        eigv_dacp = eigh(H, window_size, **dacp_kwargs)
     else:
-        eigv_dacp = dacp_eigh(H, window_size)
+        eigv_dacp = eigh(H, window_size)
 
     N_dacp = len(eigv_dacp)
 
@@ -40,9 +40,9 @@ def eigv_errors(H, window_size, **dacp_kwargs):
 def eigs_errors(H, window_size, **dacp_kwargs):
     eigv, eigs = np.linalg.eigh(H.todense())
     if dacp_kwargs:
-        eigv_dacp, eigs_dacp = dacp_eigh(H, window_size, return_eigenvectors=True, **dacp_kwargs)
+        eigv_dacp, eigs_dacp = eigh(H, window_size, return_eigenvectors=True, **dacp_kwargs)
     else:
-        eigv_dacp, eigs_dacp = dacp_eigh(H, window_size, return_eigenvectors=True)
+        eigv_dacp, eigs_dacp = eigh(H, window_size, return_eigenvectors=True)
 
     N_dacp = len(eigv_dacp)
 
@@ -73,3 +73,5 @@ error, evals, r = eigs_errors(H, window_size)
 np.max(np.linalg.norm(r, axis=1))
 
 plt.plot(np.log10(error))
+
+
