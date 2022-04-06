@@ -1,6 +1,6 @@
 from scipy.sparse.linalg import eigsh
 from scipy.sparse import eye, csr_matrix
-from scipy.linalg import eigh, eigvalsh, qr, qr_insert, orth, svd
+import scipy.linalg
 import numpy as np
 from math import ceil
 import itertools as it
@@ -18,7 +18,7 @@ def svd_decomposition(S, matrix_proj):
     matrix_proj : ndarray
         Projected matrix.
     """
-    s, V = eigh(S)
+    s, V = scipy.linalg.eigh(S)
     indx = s > 1e-12
     lambda_s = np.diag(1 / np.sqrt(s[indx]))
     U = V[:, indx] @ lambda_s
@@ -95,12 +95,12 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
         if i == int(i * dk):
             vec = v_n / np.linalg.norm(v_n, axis=0)
             if i == 0 and first_run:
-                Q, R = qr(vec, mode="economic")
+                Q, R = scipy.linalg.qr(vec, mode="economic")
             else:
-                Q, R = qr_insert(
+                Q, R = scipy.linalg.qr_insert(
                     Q=Q, R=R, u=vec, k=Q.shape[1], which="col", overwrite_qru=True
                 )
-                ortho_condition = np.abs(np.diag(R)) < 1e-12
+                ortho_condition = np.abs(np.diag(R)) < 1e-8
                 if ortho_condition.any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
@@ -269,8 +269,8 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
             N = int(np.sqrt(S.size))
             S = S.reshape((N, N))
             matrix_proj = matrix_proj.reshape((N, N))
-            q_S, r_S = qr(S)
-            ortho_condition = np.diag(np.isclose(qr(S, mode="r")[0], 0))
+            q_S, r_S = scipy.linalg.qr(S)
+            ortho_condition = np.diag(np.isclose(scipy.linalg.qr(S, mode="r")[0], 0))
             if ortho_condition.any():
                 return v_0, k_list, S, matrix_proj, q_S, r_S
             else:
@@ -376,7 +376,7 @@ def eigvals_deg(
         k_latest += 1
 
 
-def dacp_eigh(
+def eigh(
     matrix,
     window_size,
     eps=0.1,
@@ -481,7 +481,7 @@ def dacp_eigh(
             )
         v_basis = Q
         matrix_proj = v_basis.conj().T @ matrix.dot(v_basis)
-        eigvals, eigvecs = eigh(matrix_proj)
+        eigvals, eigvecs = scipy.linalg.eigh(matrix_proj)
         eigvecs = eigvecs @ v_basis.T
 
         window_args = np.abs(eigvals) < window_size
@@ -512,14 +512,14 @@ def dacp_eigh(
                     dk,
                     n_evolution,
                 )
-                q_S, r_S = qr_insert(
+                q_S, r_S = scipy.linalg.qr_insert(
                     Q=q_S,
                     R=r_S,
                     u=S[: q_S.shape[0], q_S.shape[1] :],
                     k=q_S.shape[1],
                     which="col",
                 )
-                q_S, r_S = qr_insert(
+                q_S, r_S = scipy.linalg.qr_insert(
                     Q=q_S,
                     R=r_S,
                     u=S[q_S.shape[0] :, :],
@@ -532,7 +532,7 @@ def dacp_eigh(
                     N_H_prev = N_H_cur
                 else:
                     H_red = svd_decomposition(S, matrix_proj)
-                    eigvals = eigvalsh(H_red)
+                    eigvals = scipy.linalg.eigvalsh(H_red)
                     window_args = np.abs(eigvals) < window_size
                     return eigvals[window_args]
             N_loop += 1
