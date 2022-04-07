@@ -88,9 +88,11 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
         R matrix from previous QR decomposition. Only necessary if `first_run=False`.
     """
     chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
+    count = 0
     for i in range(G_operator.shape[0]):
         v_n = next(chebyshev_recursion)
         if i == int(i * dk):
+            count += 1
             # vec = v_n / np.linalg.norm(v_n, axis=0)
             vec = v_n
             if i == 0 and first_run:
@@ -104,68 +106,6 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
     return Q, R
-
-
-def basis_overlap(
-    v_proj, G_operator, dk, first_run=True, dim=None, vec=None, S=None, Q=None, R=None
-):
-    """
-    Generate a complete basis with Chebyshev evolution.
-
-    Parameters
-    ----------
-    vproj : 2D array
-        Collection of filtered vectors.
-    G_operator : sparse matrix
-        Generator of Chebyshev evolution.
-    dk : float
-        Steps on Chebyshev evolution before collecting vector.
-    first_run : boolean
-        `True` if it is the first run of Chebyshev evolution before checking degeneracies.
-    Q : 2D array
-        Q matrix from previous QR decomposition. Only necessary if `first_run=False`.
-    R : 2D array
-        R matrix from previous QR decomposition. Only necessary if `first_run=False`.
-    """
-    chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
-    count = 0
-    i = 0
-    for i in range(G_operator.shape[0]):
-        v_n = next(chebyshev_recursion)
-        if i == int(count * dk):
-            count += 1
-            if i == 0 and first_run:
-                vec = v_n
-                S = vec.T.conj() @ vec
-                Q, R = scipy.linalg.qr(S, mode="economic")
-                dim = sum(np.invert(np.isclose(np.diag(R), 0)))
-            else:
-                dim_prev = dim
-                S_prev = S
-                S_diag = v_n.T.conj() @ v_n
-                S_off = vec.T.conj() @ v_n
-                S = np.block([[S_prev, S_off], [S_off.T.conj(), S_diag]])
-                vec = np.concatenate((vec, v_n), axis=1)
-                Q, R = scipy.linalg.qr_insert(
-                    Q=Q,
-                    R=R,
-                    u=S[: Q.shape[0], Q.shape[1] :],
-                    k=Q.shape[1],
-                    which="col",
-                )
-                Q, R = scipy.linalg.qr_insert(
-                    Q=Q,
-                    R=R,
-                    u=S[Q.shape[0] :, :],
-                    k=Q.shape[0],
-                    which="row",
-                )
-                dim = sum(np.invert(np.isclose(np.diag(R), 0)))
-                if not (dim_prev < dim):
-                    return Q, R, S, vec, dim
-        i += 1
-    return Q, R, S, vec, dim
-
 
 def index_generator_fn(dk):
     """
@@ -517,48 +457,32 @@ def eigh(
     dk = ceil(np.pi / a_r)
 
     if return_eigenvectors:
-
-        Q, R, S, vec, dim = basis_overlap(
+        # First run
+        Q, R = basis(v_proj=get_filtered_vector(), G_operator=G_operator, dk=dk)
+        # Second run
+        Qi, Ri = basis(
             v_proj=get_filtered_vector(),
             G_operator=G_operator,
             dk=dk,
-            first_run=True,
-            vec=None,
-            dim=None,
-            S=None,
-            Q=None,
-            R=None,
-        )
-        Q, R, Si, veci, dimi = basis_overlap(
-            v_proj=get_filtered_vector(),
-            G_operator=G_operator,
-            dk=dk,
-            first_run=False,
-            vec=vec,
-            dim=dim,
-            S=S,
             Q=Q,
             R=R,
+            first_run=False,
         )
-        while dim < dimi:
-            dim, vec, S = dimi, veci, Si
-            Q, R, Si, veci, dimi = basis_overlap(
+        # Other runs to solve higher degeneracies
+        while Q.shape[1] < Qi.shape[1]:
+            Q, R = Qi, Ri
+            Qi, Ri = basis(
                 v_proj=get_filtered_vector(),
                 G_operator=G_operator,
                 dk=dk,
-                first_run=False,
-                vec=vec,
-                dim=dim,
-                S=S,
                 Q=Q,
                 R=R,
+                first_run=False,
             )
 
-        v_basis = veci
-        v_basis = scipy.linalg.qr(v_basis)[0]
-        matrix_proj = v_basis.conj().T @ matrix.dot(v_basis)
+        matrix_proj = Q.conj().T @ matrix.dot(Q)
         eigvals, eigvecs = scipy.linalg.eigh(matrix_proj)
-
+        eigvecs = eigvecs @ Q.T
         window_args = np.abs(eigvals) < window_size
         return eigvals[window_args], eigvecs[window_args, :]
 
