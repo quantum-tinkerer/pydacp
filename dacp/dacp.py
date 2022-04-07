@@ -5,7 +5,6 @@ import numpy as np
 from math import ceil
 import itertools as it
 
-
 def svd_decomposition(S, matrix_proj):
     """
     Perform SVD decomposition.
@@ -23,7 +22,6 @@ def svd_decomposition(S, matrix_proj):
     lambda_s = np.diag(1 / np.sqrt(s[indx]))
     U = V[:, indx] @ lambda_s
     return U.T.conj() @ matrix_proj @ U
-
 
 def chebyshev_recursion_gen(matrix, v_0):
     """
@@ -93,7 +91,8 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
     for i in range(G_operator.shape[0]):
         v_n = next(chebyshev_recursion)
         if i == int(i * dk):
-            vec = v_n / np.linalg.norm(v_n, axis=0)
+            # vec = v_n / np.linalg.norm(v_n, axis=0)
+            vec = v_n
             if i == 0 and first_run:
                 Q, R = scipy.linalg.qr(vec, mode="economic")
             else:
@@ -105,6 +104,67 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
     return Q, R
+
+
+def basis_overlap(
+    v_proj, G_operator, dk, first_run=True, dim=None, vec=None, S=None, Q=None, R=None
+):
+    """
+    Generate a complete basis with Chebyshev evolution.
+
+    Parameters
+    ----------
+    vproj : 2D array
+        Collection of filtered vectors.
+    G_operator : sparse matrix
+        Generator of Chebyshev evolution.
+    dk : float
+        Steps on Chebyshev evolution before collecting vector.
+    first_run : boolean
+        `True` if it is the first run of Chebyshev evolution before checking degeneracies.
+    Q : 2D array
+        Q matrix from previous QR decomposition. Only necessary if `first_run=False`.
+    R : 2D array
+        R matrix from previous QR decomposition. Only necessary if `first_run=False`.
+    """
+    chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
+    count = 0
+    i = 0
+    for i in range(G_operator.shape[0]):
+        v_n = next(chebyshev_recursion)
+        if i == int(count * dk):
+            count += 1
+            if i == 0 and first_run:
+                vec = v_n
+                S = vec.T.conj() @ vec
+                Q, R = scipy.linalg.qr(S, mode="economic")
+                dim = sum(np.invert(np.isclose(np.diag(R), 0)))
+            else:
+                dim_prev = dim
+                S_prev = S
+                S_diag = v_n.T.conj() @ v_n
+                S_off = vec.T.conj() @ v_n
+                S = np.block([[S_prev, S_off], [S_off.T.conj(), S_diag]])
+                vec = np.concatenate((vec, v_n), axis=1)
+                Q, R = scipy.linalg.qr_insert(
+                    Q=Q,
+                    R=R,
+                    u=S[: Q.shape[0], Q.shape[1] :],
+                    k=Q.shape[1],
+                    which="col",
+                )
+                Q, R = scipy.linalg.qr_insert(
+                    Q=Q,
+                    R=R,
+                    u=S[Q.shape[0] :, :],
+                    k=Q.shape[0],
+                    which="row",
+                )
+                dim = sum(np.invert(np.isclose(np.diag(R), 0)))
+                if not (dim_prev < dim):
+                    return Q, R, S, vec, dim
+        i += 1
+    return Q, R, S, vec, dim
 
 
 def index_generator_fn(dk):
@@ -384,7 +444,7 @@ def eigh(
     random_vectors=2,
     return_eigenvectors=False,
     filter_order=14,
-    error_window=0.2
+    error_window=0.2,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -436,7 +496,7 @@ def eigh(
     Ec = (Emax + Emin) / 2
     G_operator = (matrix - eye(matrix.shape[0]) * Ec) / E0
 
-    a = window_size*(1+error_window)
+    a = window_size * (1 + error_window)
     Emax = np.max(np.abs(bounds)) * (1 + eps)
     E0 = (Emax ** 2 - a ** 2) / 2
     Ec = (Emax ** 2 + a ** 2) / 2
@@ -457,32 +517,47 @@ def eigh(
     dk = ceil(np.pi / a_r)
 
     if return_eigenvectors:
-        # First run
-        Q, R = basis(v_proj=get_filtered_vector(), G_operator=G_operator, dk=dk)
-        # Second run
-        Qi, Ri = basis(
+
+        Q, R, S, vec, dim = basis_overlap(
             v_proj=get_filtered_vector(),
             G_operator=G_operator,
             dk=dk,
+            first_run=True,
+            vec=None,
+            dim=None,
+            S=None,
+            Q=None,
+            R=None,
+        )
+        Q, R, Si, veci, dimi = basis_overlap(
+            v_proj=get_filtered_vector(),
+            G_operator=G_operator,
+            dk=dk,
+            first_run=False,
+            vec=vec,
+            dim=dim,
+            S=S,
             Q=Q,
             R=R,
-            first_run=False,
         )
-        # Other runs to solve higher degeneracies
-        while Q.shape[1] < Qi.shape[1]:
-            Q, R = Qi, Ri
-            Qi, Ri = basis(
+        while dim < dimi:
+            dim, vec, S = dimi, veci, Si
+            Q, R, Si, veci, dimi = basis_overlap(
                 v_proj=get_filtered_vector(),
                 G_operator=G_operator,
                 dk=dk,
+                first_run=False,
+                vec=vec,
+                dim=dim,
+                S=S,
                 Q=Q,
                 R=R,
-                first_run=False,
             )
-        v_basis = Q
+
+        v_basis = veci
+        v_basis = scipy.linalg.qr(v_basis)[0]
         matrix_proj = v_basis.conj().T @ matrix.dot(v_basis)
         eigvals, eigvecs = scipy.linalg.eigh(matrix_proj)
-        eigvecs = eigvecs @ v_basis.T
 
         window_args = np.abs(eigvals) < window_size
         return eigvals[window_args], eigvecs[window_args, :]
@@ -526,13 +601,16 @@ def eigh(
                     k=q_S.shape[0],
                     which="row",
                 )
-                N_H_cur = sum(np.invert(np.isclose(np.diag(r_S), 0)))
+                N_H_cur = sum(np.invert(np.isclose(np.diag(r_S), 0, atol=1e-14)))
                 new_vals = N_H_cur - N_H_prev
                 if new_vals > 0:
                     N_H_prev = N_H_cur
                 else:
+                    diagS = np.diag(np.diag(S))
+                    S = S - diagS + diagS.real
                     H_red = svd_decomposition(S, matrix_proj)
                     eigvals = scipy.linalg.eigvalsh(H_red)
+                    # eigvals = scipy.linalg.eigvalsh(matrix_proj, S)
                     window_args = np.abs(eigvals) < window_size
                     return eigvals[window_args]
             N_loop += 1
