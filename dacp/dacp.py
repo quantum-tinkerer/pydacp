@@ -384,7 +384,7 @@ def eigh(
     random_vectors=2,
     return_eigenvectors=False,
     filter_order=14,
-    error_window=0.2,
+    error_window=0.25,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -480,9 +480,9 @@ def eigh(
                 first_run=False,
             )
 
-        matrix_proj = Q.conj().T @ matrix.dot(Q)
+        matrix_proj = Q.conj().T @ matrix @ Q
         eigvals, eigvecs = scipy.linalg.eigh(matrix_proj)
-        eigvecs = eigvecs @ Q.T
+        eigvecs = (Q @ eigvecs).T
         window_args = np.abs(eigvals) < window_size
         return eigvals[window_args], eigvecs[window_args, :]
 
@@ -534,7 +534,6 @@ def eigh(
                     S = S - diagS + diagS.real
                     H_red = svd_decomposition(S, matrix_proj)
                     eigvals = scipy.linalg.eigvalsh(H_red)
-                    # eigvals = scipy.linalg.eigvalsh(matrix_proj, S)
                     window_args = np.abs(eigvals) < window_size
                     return eigvals[window_args]
             N_loop += 1

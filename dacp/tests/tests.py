@@ -2,9 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from dacp.dacp import eigh
 from scipy.sparse import csr_matrix
+import unittest
 
 # +
-N = 200
+max_error_tresh = 1e-6
+N = 400
 window_size = 0.1
 
 def random_values(shape):
@@ -31,10 +33,14 @@ def eigv_errors(H, window_size, **dacp_kwargs):
     eigv = eigv[np.argsort(np.abs(eigv))]
     eigv_dacp = eigv_dacp[np.argsort(np.abs(eigv_dacp))]
 
-    relative_error = np.abs(eigv_dacp-eigv[:N_dacp])/np.abs(eigv[:N_dacp])
-    missed_evals = eigv[N_dacp:]
+    N_scipy = len(eigv)
+    N_min = np.min([N_dacp, N_scipy])
 
-    return relative_error, missed_evals
+    relative_error = np.abs(np.abs(eigv_dacp[:N_min])-np.abs(eigv[:N_min]))/np.abs(eigv[:N_min])
+    missed_evals = eigv[N_dacp:]
+    excess_evals = eigv_dacp[N_min:]
+
+    return relative_error, missed_evals, excess_evals
 
 
 def eigs_errors(H, window_size, **dacp_kwargs):
@@ -58,20 +64,42 @@ def eigs_errors(H, window_size, **dacp_kwargs):
     eigv_dacp = eigv_dacp[order_args]
     eigs_dacp = eigs_dacp[order_args, :]
 
-    relative_error = np.abs(eigv_dacp-eigv[:N_dacp])/np.abs(eigv[:N_dacp])
+    N_scipy = len(eigv)
+    N_min = np.min([N_dacp, N_scipy])
+
+    relative_error = np.abs(np.abs(eigv_dacp[:N_min])-np.abs(eigv[:N_min]))/np.abs(eigv[:N_min])
     missed_evals = eigv[N_dacp:]
+    excess_evals = len(eigv_dacp[N_min:])
 
-    r = np.einsum('ij, kj -> ki', H.todense(), eigs_dacp) - np.einsum('i, ij -> ij', eigv_dacp, eigs_dacp)
-
-    return relative_error, missed_evals, r
-
-
-# -
-
-error, evals, r = eigs_errors(H, window_size)
-
-np.max(np.linalg.norm(r, axis=1))
-
-plt.plot(np.log10(error))
+    r = np.einsum('ij, kj -> ki', H.todense(), eigs_dacp[:N_min]) - np.einsum('i, ij -> ij', eigv_dacp[:N_min], eigs_dacp[:N_min])
+    r = np.linalg.norm(r, axis=1)
+    return relative_error, missed_evals, excess_evals, r
 
 
+# +
+class TestEigh(unittest.TestCase):
+    def test_eigvals(self):
+        """
+        Test the eigenvalue only method
+        """
+        errors_val, missed_vals, excess_evals = eigv_errors(H, window_size)
+        self.assertEqual(len(missed_vals), 0, msg=f"The Algorithm failed to find the following eigenvalues: {missed_vals}")
+        self.assertEqual(excess_evals, 0, msg=f"The Algorithm found excess faulty {excess_evals} eigenvalues")
+        max_error = np.max(errors_val)
+        self.assertTrue(max_error < max_error_tresh, msg=f"Eigenvalue relative errors too high: {max_error}")
+
+    def test_eigvecs(self):
+        """
+        Test the eigenvector method
+        """
+        errors_val, missed_vals, excess_evals, r = eigs_errors(H, window_size)
+        self.assertEqual(len(missed_vals), 0, msg=f"The Algorithm failed to find the following eigenvalues: {missed_vals}")
+        self.assertEqual(excess_evals, 0, msg=f"The Algorithm found excess faulty {excess_evals} eigenvalues")
+        max_error = np.max(errors_val)
+        self.assertTrue(max_error < max_error_tresh, msg=f"Eigenvalue relative errors too high: {max_error}")
+        max_vec_error = np.max(r)
+        self.assertTrue(max_vec_error < max_error_tresh, msg=f"Eigenvector relative errors too high: {max_vec_error}")
+
+
+if __name__ == '__main__':
+    unittest.main()
