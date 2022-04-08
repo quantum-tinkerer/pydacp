@@ -38,7 +38,7 @@ def eigv_errors(H, window_size, **dacp_kwargs):
 
     relative_error = np.abs(np.abs(eigv_dacp[:N_min])-np.abs(eigv[:N_min]))/np.abs(eigv[:N_min])
     missed_evals = eigv[N_dacp:]
-    excess_evals = eigv_dacp[N_min:]
+    excess_evals = len(eigv_dacp[N_min:])
 
     return relative_error, missed_evals, excess_evals
 
