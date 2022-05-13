@@ -10,7 +10,7 @@ max_eigvec_tresh = 1e-4
 N = 400
 N_block = 20
 deg_n = 20
-loop_n = 2
+loop_n = 10
 window_size = 0.1
 
 def random_values(shape):
