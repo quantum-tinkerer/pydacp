@@ -17,7 +17,8 @@ We write an arbitrary vector in terms of the eigenvectors of the Hamiltonian $`\
 |r\rangle = \sum_{E_i \in [-a, a]} \alpha_i |\psi_i\rangle + \sum_{E_i \notin [-a, a]} \beta_i |\phi_i\rangle.
 ```
 
-The idea now is to obtain an energy-filtered vector $`|r_E\rangle`$ by removing the second term of the equation above. To do so, we define the operator
+The idea now is to obtain an energy-filtered vector $`|r_E\rangle`$ by removing the second term of the equation above.
+To do so, we define the operator
 ```math
 \mathcal{F} := \frac{\mathcal{H}^2 - E_c}{E_0}
 ```
@@ -52,12 +53,39 @@ with $`X:=\pi\mathcal{G}/a_r`$, and $`a_r = a/\mathrm{max}(|E_{max}|, |E_{min}|)
 
 In fact, we can span the basis above by, instead of computing trigonometric functions of a matrix, computing simply several Chebyshev **polynomials** of $`\mathcal{G}`$.
 
-The remaininig problem is that we don't know the value of $`n`$, so we must (over)estimate the dimension of this subspace. And guess what: we use **again** Chebyshev polynomials by performing a low-resolution KPM. Since we overestimate the dimension, we also want to get rid of linearly dependent vectors, so we do SVD.
+The remaininig problem is that we don't know the value of $`n`$, so we must (over)estimate the dimension of this subspace.
+And guess what: we use **again** Chebyshev polynomials by performing a low-resolution KPM.
+Since we overestimate the dimension, we also want to get rid of linearly dependent vectors, so we do SVD.
 
 The final set of vectors $`\lbrace \psi_k \rbrace`$ is then used to compute the projected low-energy Hamiltonian:
 ```math
 H_{\text{eff}}^{ij} = \langle \psi_i |\mathcal{H}|\psi_j\rangle.
 ```
+
+### Dealing with degeneracies
+
+The method above is not able to resolve degeneracies: each random vector can only span a non-degenerate subspace of $`\mathcal{L}`$.
+Therefore, we solve the problem by adding more random vectors.
+The library has two different implementations to solve degeneracies, which defines the methods that return or not the eigenvectors.
+
+#### Eigenvalues + eigenvectors method
+
+To make sure a complete basis is generated, after the end of each Chebolution&trade run finishes, we diagonalize the set of eigenvectors by performing QR-decomposition of $`[\psi_k]`$:
+```math
+[\psi_k] = QR
+```
+and take $`Q`$ as the new basis.
+When adding new random vectors no longer increase the subspace dimension, the projected matrix
+```math
+H_{\text{eff}}^{ij} = \langle \psi_i |\mathcal{H}|\psi_j\rangle.
+```
+is computed.
+
+#### Eigenvalues-only method
+
+A second option for the DACP algorithm is to directly compute the projected and overlap matrices without storing all vectors.
+However, when dealing with degeneracies, it means that we no longer orthogonalize the set $`\{\psi_k\}`$.
+Instead, we perform QR decomposition of the overlap matrix, and similarly to the previous case, we stop when the subspace dimension stops increasing.
 
 ## Usage example
 
