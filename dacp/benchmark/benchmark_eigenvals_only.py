@@ -13,6 +13,8 @@ from tqdm import tqdm
 import itertools as it
 import xarray as xr
 
+calculation = 'eigvals_only'
+
 # +
 t = 1
 
@@ -89,7 +91,7 @@ def benchmark(N, seed, dimension):
     def dacp_benchmark():
         eigs = core.dacp_eig(
             H,
-            a=a,
+            window_size=a,
             eps=0.05,
             return_eigenvectors=False,
             filter_order=15,
@@ -103,14 +105,23 @@ def benchmark(N, seed, dimension):
 
     dacp_data = [dacp_time, dacp_memory]
 
-    return dacp_data
+    def sparse_benchmark():
+        _ = sparse_diag(H, sigma=0, k=k, which="LM", return_eigenvectors=False)
+
+    start_time = time.time()
+    sparse_memory, a = memory_usage(sparse_benchmark, max_usage=True, retval=True)
+    sparse_time = time.time() - start_time
+
+    sparse_data = [sparse_time, sparse_memory]
+
+    return sparse_data, dacp_data
 
 
 # +
 params = {
     'N' : [10**i for i in np.linspace(3, 5, 5, endpoint=True)],
-    'seeds' : [1],#, 2, 3],
-    'dimensions' : [1]
+    'seeds' : [1, 2, 3],
+    'dimensions' : [1, 2, 3]
 }
 
 values = list(params.values())
@@ -126,7 +137,7 @@ result = list(map(wrapped_fn, args))
 # -
 
 shapes = [len(values[i]) for i in range(len(values))]
-shapes = [*shapes, 2]
+shapes = [*shapes, 4]
 shaped_data = np.reshape(result, shapes)
 
 shaped_data = np.reshape(result, shapes)
@@ -135,11 +146,11 @@ da = xr.DataArray(
     dims=[*params.keys(), 'output'],
     coords={
         **params,
-        'output': ['dacptime', 'dacpmem']
+        'output': ['sparsetime', 'sparsemem', 'dacptime', 'dacpmem']
     }
 )
 
-da.to_netcdf('./benchmark_data/data_dacp_eigsonly_1d.nc')
+da.to_netcdf('./benchmark_data/data_benchmark_' + calculation + '.nc')
 
 da_mean=da.mean(dim='seeds')
 
@@ -164,62 +175,77 @@ def slope(dim, output):
 
 
 slope(dim=1, output='dacptime')
+slope(dim=1, output='sparsetime')
 
-# +
-# slope(dim=2, output='dacptime')
+slope(dim=2, output='dacptime')
+slope(dim=2, output='sparsetime')
 
-# +
-# slope(dim=3, output='dacptime')
-# slope(dim=3, output='sparsetime')
-# -
+slope(dim=3, output='dacptime')
+slope(dim=3, output='sparsetime')
 
 slope(dim=1, output='dacpmem')
+slope(dim=1, output='sparsemem')
 
-# +
-# slope(dim=2, output='dacpmem')
+slope(dim=2, output='dacpmem')
+slope(dim=2, output='sparsemem')
 
-# +
-# slope(dim=3, output='dacpmem')
-# slope(dim=3, output='sparsemem')
-# -
+slope(dim=3, output='dacpmem')
+slope(dim=3, output='sparsemem')
 
 from sys import getsizeof
 
 getsizeof(np.random.rand(int(1e6)) + 1j * np.random.rand(int(1e6))) / 1e6 * 1000
 
-(da_mean.sel(dimensions=1).sel(output=['dacptime'])/3600).plot(hue='output', marker='o')
+(da_mean.sel(dimensions=1).sel(output=['dacptime', 'sparsetime'])/3600).plot(hue='output', marker='o')
 plt.xscale('log')
 plt.yscale('log')
-plt.tight_layout()
 plt.ylabel(r'$\mathrm{Time\ [hours]}$')
 plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
-plt.savefig('time_1d_eigsonly_dacponly.png')
+plt.tight_layout()
+plt.savefig('time_1d_' + calculation + '.png')
 plt.show()
 
-(da_mean.sel(dimensions=1).sel(output=['dacpmem'])/1000).plot(hue='output', marker='o')
+(da_mean.sel(dimensions=1).sel(output=['dacpmem', 'sparsemem'])/1000).plot(hue='output', marker='o')
 plt.xscale('log')
 plt.yscale('log')
 plt.ylabel(r'$\mathrm{Memory\ [GB]}$')
 plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
 plt.tight_layout()
-plt.savefig('mem_1d_eigsonly_dacponly.png')
+plt.savefig('mem_1d_' + calculation + '.png')
 plt.show()
 
-# +
-# da_mean.sel(dimensions=2).sel(output=['dacptime']).plot(hue='output', marker='o')
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.tight_layout()
-# plt.savefig('time_2d_eigsonly_dacponly.png')
-# plt.show()
+(da_mean.sel(dimensions=2).sel(output=['dacptime', 'sparsetime'])/3600).plot(hue='output', marker='o')
+plt.xscale('log')
+plt.yscale('log')
+plt.ylabel(r'$\mathrm{Time\ [hours]}$')
+plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
+plt.tight_layout()
+plt.savefig('time_2d_' + calculation + '.png')
+plt.show()
 
-# +
-# da_mean.sel(dimensions=2).sel(output=['dacpmem']).plot(hue='output', marker='o')
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.tight_layout()
-# plt.savefig('mem_2d_eigsonly_dacponly.png')
-# plt.show()
-# -
+(da_mean.sel(dimensions=2).sel(output=['dacpmem', 'sparsemem'])/1000).plot(hue='output', marker='o')
+plt.xscale('log')
+plt.yscale('log')
+plt.ylabel(r'$\mathrm{Memory\ [GB]}$')
+plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
+plt.tight_layout()
+plt.savefig('mem_2d_' + calculation + '.png')
+plt.show()
 
+(da_mean.sel(dimensions=3).sel(output=['dacptime', 'sparsetime'])/3600).plot(hue='output', marker='o')
+plt.xscale('log')
+plt.yscale('log')
+plt.ylabel(r'$\mathrm{Time\ [hours]}$')
+plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
+plt.tight_layout()
+plt.savefig('time_3d_' + calculation + '.png')
+plt.show()
 
+(da_mean.sel(dimensions=3).sel(output=['dacpmem', 'sparsemem'])/1000).plot(hue='output', marker='o')
+plt.xscale('log')
+plt.yscale('log')
+plt.ylabel(r'$\mathrm{Memory\ [GB]}$')
+plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
+plt.tight_layout()
+plt.savefig('mem_3d_' + calculation + '.png')
+plt.show()
