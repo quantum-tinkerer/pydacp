@@ -10,7 +10,7 @@ max_eigvec_tresh = 1e-4
 N = 400
 N_block = 20
 deg_n = 20
-loop_n = 100
+loop_n = 2
 window_size = 0.1
 
 def random_values(shape):
@@ -64,9 +64,9 @@ def eigv_errors_test(loop_n, deg=False, **dacp_kwargs):
         relative_error_list.append(np.max(relative_error))
         missed_evals_list.append(len(missed_evals))
         excess_evals_list.append(excess_evals)
-    
-    return np.max(relative_error_list), np.sum(missed_evals_list), np.sum(excess_evals_list)
-    
+
+    return np.max(relative_error_list), missed_evals_list, excess_evals_list
+
 def eigs_errors(H, window_size, **dacp_kwargs):
     eigv, eigs = np.linalg.eigh(H.todense())
     if dacp_kwargs:
@@ -114,7 +114,7 @@ def eigs_errors_test(loop_n, deg=False, **dacp_kwargs):
         missed_evals_list.append(len(missed_evals))
         excess_evals_list.append(excess_evals)
         r_list.append(np.max(r))
-    return np.max(relative_error_list), np.sum(missed_evals_list), np.sum(excess_evals_list), np.max(r_list)
+    return np.max(relative_error_list), missed_evals_list, excess_evals_list, np.max(r_list)
 
 
 # +
@@ -124,18 +124,18 @@ class TestEigh(unittest.TestCase):
         Test the eigenvalue only method
         """
         relative_error, missed_evals, excess_evals = eigv_errors_test(loop_n)
-        self.assertEqual(missed_evals, 0, msg=f"The Algorithm failed to find {missed_evals} eigenvalues.")
-        self.assertEqual(excess_evals, 0, msg=f"The Algorithm found {excess_evals} excess faulty eigenvalues")
+        self.assertEqual(np.sum(missed_evals), 0, msg=f"The Algorithm failed to find {np.sum(missed_evals)} evals in {loop_n} loops. Single run max missing evals is {np.max(missed_evals)} ")
+        self.assertEqual(np.sum(excess_evals), 0, msg=f"The Algorithm found faulty excess {np.sum(excess_evals)} evals in {loop_n} loops. Single run max excess evals is {np.max(excess_evals)} ")
         max_error = np.max(relative_error)
         self.assertTrue(max_error < max_error_tresh, msg=f"Eigenvalue relative errors too high: {max_error}")
-        
+
     def test_eigvals_deg(self):
         """
         Test the eigenvalue only method
         """
         relative_error, missed_evals, excess_evals = eigv_errors_test(loop_n, deg=True, random_vectors=3)
-        self.assertEqual(missed_evals, 0, msg=f"The Algorithm failed to find {missed_evals} eigenvalues.")
-        self.assertEqual(excess_evals, 0, msg=f"The Algorithm found {excess_evals} excess faulty eigenvalues")
+        self.assertEqual(np.sum(missed_evals), 0, msg=f"The Algorithm failed to find {np.sum(missed_evals)} evals in {loop_n} loops. Single run max missing evals is {np.max(missed_evals)} ")
+        self.assertEqual(np.sum(excess_evals), 0, msg=f"The Algorithm found faulty excess {np.sum(excess_evals)} evals in {loop_n} loops. Single run max excess evals is {np.max(excess_evals)} ")
         max_error = np.max(relative_error)
         self.assertTrue(max_error < max_error_tresh, msg=f"Eigenvalue relative errors too high: {max_error}")
 
@@ -144,25 +144,25 @@ class TestEigh(unittest.TestCase):
         Test the eigenvector method
         """
         relative_error, missed_evals, excess_evals, r = eigs_errors_test(loop_n)
-        self.assertEqual(missed_evals, 0, msg=f"The Algorithm failed to find {missed_evals} eigenvalues.")
-        self.assertEqual(excess_evals, 0, msg=f"The Algorithm found {excess_evals} excess faulty eigenvalues")
+        self.assertEqual(np.sum(missed_evals), 0, msg=f"The Algorithm failed to find {np.sum(missed_evals)} evals in {loop_n} loops. Single run max missing evals is {np.max(missed_evals)} ")
+        self.assertEqual(np.sum(excess_evals), 0, msg=f"The Algorithm found faulty excess {np.sum(excess_evals)} evals in {loop_n} loops. Single run max excess evals is {np.max(excess_evals)} ")
         max_error = np.max(relative_error)
         self.assertTrue(max_error < max_error_tresh, msg=f"Eigenvalue relative errors too high: {max_error}")
         max_vec_error = np.max(r)
         self.assertTrue(max_vec_error < max_eigvec_tresh, msg=f"Eigenvector relative errors too high: {max_vec_error}")
-        
+
     def test_eigvecs_deg(self):
         """
         Test the eigenvector method
         """
         relative_error, missed_evals, excess_evals, r = eigs_errors_test(loop_n, deg=True, random_vectors=3)
-        self.assertEqual(missed_evals, 0, msg=f"The Algorithm failed to find {missed_evals} eigenvalues.")
-        self.assertEqual(excess_evals, 0, msg=f"The Algorithm found {excess_evals} excess faulty eigenvalues")
+        self.assertEqual(np.sum(missed_evals), 0, msg=f"The Algorithm failed to find {np.sum(missed_evals)} evals in {loop_n} loops. Single run max missing evals is {np.max(missed_evals)} ")
+        self.assertEqual(np.sum(excess_evals), 0, msg=f"The Algorithm found faulty excess {np.sum(excess_evals)} evals in {loop_n} loops. Single run max excess evals is {np.max(excess_evals)} ")
         max_error = np.max(relative_error)
         self.assertTrue(max_error < max_error_tresh, msg=f"Eigenvalue relative errors too high: {max_error}")
         max_vec_error = np.max(r)
         self.assertTrue(max_vec_error < max_eigvec_tresh, msg=f"Eigenvector relative errors too high: {max_vec_error}")
-        
+
 if __name__ == '__main__':
     unittest.main()
 # -
