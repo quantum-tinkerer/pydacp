@@ -1,0 +1,11 @@
+image: gitlab.kwant-project.org:5005/qt/research-docker
+
+stages:
+    - tests
+before_script:
+    - pip install .
+tests:
+    stage: tests
+    script:
+        - cd dacp/tests
+        - python -m unittest -v test.py
