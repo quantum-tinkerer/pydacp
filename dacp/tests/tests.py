@@ -8,9 +8,9 @@ import unittest
 max_error_tresh = 1e-6
 max_eigvec_tresh = 1e-4
 N = 400
-N_block = 20
-deg_n = 20
-loop_n = 10
+N_block = 50
+deg_n = 8
+loop_n = 30
 window_size = 0.1
 
 def random_values(shape):
