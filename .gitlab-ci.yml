@@ -8,4 +8,4 @@ tests:
     stage: tests
     script:
         - cd dacp/tests
-        - python -m unittest -v test.py
+        - python -m unittest -v tests.py
