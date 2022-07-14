@@ -24,24 +24,11 @@ def random_ham(N):
     H = (H.conj().T + H) / (2 * np.sqrt(N))
     return csr_matrix(H)
 
-# def random_ham(N):
-#     c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
-#     b = 2 * (np.random.rand(N) - 0.5)
-
-#     H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
-#     return csr_matrix(H)
-
 def random_ham_deg(N, deg):
     H = random_values((N, N)) + random_values((N, N)) * 1j
     H = (H.conj().T + H) / (2 * np.sqrt(N))
     return csr_matrix(np.kron(H, np.identity(deg)))
 
-# def random_ham_deg(N, deg):
-#     c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
-#     b = 2 * (np.random.rand(N) - 0.5)
-
-#     H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
-#     return csr_matrix(np.kron(H.todense(), np.identity(deg)))
 
 # +
 def eigv_errors(H, window_size, **dacp_kwargs):
