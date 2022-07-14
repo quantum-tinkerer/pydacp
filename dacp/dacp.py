@@ -275,7 +275,7 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
             S = S.reshape((N, N))
             matrix_proj = matrix_proj.reshape((N, N))
             q_S, r_S = scipy.linalg.qr(S)
-            norm = np.sqrt(np.arange(1, len(np.diag(r_S)) + 1))**2
+            norm = np.arange(1, len(np.diag(r_S)) + 1)
             ortho_condition = np.abs(np.diag(r_S) * norm) > 1e-12
             if np.invert(ortho_condition).any():
                 return v_0, k_list, S, matrix_proj, q_S, r_S
@@ -501,7 +501,7 @@ def eigh(
                 v_0, k_list, S, matrix_proj, q_S, r_S = eigvals_init(
                     v_proj, G_operator, matrix, dk
                 )
-                norm = np.sqrt(np.arange(1, len(np.diag(r_S)) + 1))**2
+                norm = np.arange(1, len(np.diag(r_S)) + 1)
                 N_H_prev = sum(np.abs(np.diag(r_S) * norm) > 1e-12)
                 new_vals = N_H_prev
             else:
@@ -532,7 +532,7 @@ def eigh(
                     k=q_S.shape[0],
                     which="row",
                 )
-                norm = np.sqrt(np.arange(1, len(np.diag(r_S)) + 1))**2
+                norm = np.arange(1, len(np.diag(r_S)) + 1)
                 N_H_cur = sum(np.abs(np.diag(r_S) * norm) > 1e-12)
                 new_vals = N_H_cur - N_H_prev
                 if new_vals > 0:
