@@ -5,6 +5,9 @@ import numpy as np
 from math import ceil
 import itertools as it
 
+
+import matplotlib.pyplot as plt
+
 def svd_decomposition(S, matrix_proj):
     """
     Perform SVD decomposition.
@@ -22,6 +25,7 @@ def svd_decomposition(S, matrix_proj):
     lambda_s = np.diag(1 / np.sqrt(s[indx]))
     U = V[:, indx] @ lambda_s
     return U.T.conj() @ matrix_proj @ U
+
 
 def chebyshev_recursion_gen(matrix, v_0):
     """
@@ -93,7 +97,6 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
         v_n = next(chebyshev_recursion)
         if i == int(i * dk):
             count += 1
-            # vec = v_n / np.linalg.norm(v_n, axis=0)
             vec = v_n
             if i == 0 and first_run:
                 Q, R = scipy.linalg.qr(vec, mode="economic")
@@ -101,11 +104,13 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
                 Q, R = scipy.linalg.qr_insert(
                     Q=Q, R=R, u=vec, k=Q.shape[1], which="col", overwrite_qru=True
                 )
-                ortho_condition = np.abs(np.diag(R)) < 1e-8
-                if ortho_condition.any():
+                norm = np.arange(1, len(np.diag(R)) + 1)
+                ortho_condition = np.abs(np.diag(R) * norm) > 1e-12
+                if np.invert(ortho_condition).any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
     return Q, R
+
 
 def index_generator_fn(dk):
     """
@@ -270,8 +275,9 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
             S = S.reshape((N, N))
             matrix_proj = matrix_proj.reshape((N, N))
             q_S, r_S = scipy.linalg.qr(S)
-            ortho_condition = np.diag(np.isclose(scipy.linalg.qr(S, mode="r")[0], 0))
-            if ortho_condition.any():
+            norm = np.sqrt(np.arange(1, len(np.diag(r_S)) + 1))**2
+            ortho_condition = np.abs(np.diag(r_S) * norm) > 1e-12
+            if np.invert(ortho_condition).any():
                 return v_0, k_list, S, matrix_proj, q_S, r_S
             else:
                 eig_pairs += 1
@@ -438,8 +444,8 @@ def eigh(
 
     a = window_size * (1 + error_window)
     Emax = np.max(np.abs(bounds)) * (1 + eps)
-    E0 = (Emax ** 2 - a ** 2) / 2
-    Ec = (Emax ** 2 + a ** 2) / 2
+    E0 = (Emax**2 - a**2) / 2
+    Ec = (Emax**2 + a**2) / 2
     F_operator = (matrix @ matrix - eye(matrix.shape[0]) * Ec) / E0
 
     def get_filtered_vector():
@@ -495,7 +501,8 @@ def eigh(
                 v_0, k_list, S, matrix_proj, q_S, r_S = eigvals_init(
                     v_proj, G_operator, matrix, dk
                 )
-                N_H_prev = sum(np.invert(np.isclose(np.diag(r_S), 0)))
+                norm = np.sqrt(np.arange(1, len(np.diag(r_S)) + 1))**2
+                N_H_prev = sum(np.abs(np.diag(r_S) * norm) > 1e-12)
                 new_vals = N_H_prev
             else:
                 if new_vals <= random_vectors and not n_evolution:
@@ -525,7 +532,8 @@ def eigh(
                     k=q_S.shape[0],
                     which="row",
                 )
-                N_H_cur = sum(np.invert(np.isclose(np.diag(r_S), 0, atol=1e-14)))
+                norm = np.sqrt(np.arange(1, len(np.diag(r_S)) + 1))**2
+                N_H_cur = sum(np.abs(np.diag(r_S) * norm) > 1e-12)
                 new_vals = N_H_cur - N_H_prev
                 if new_vals > 0:
                     N_H_prev = N_H_cur
