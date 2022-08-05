@@ -465,7 +465,7 @@ def eigh(
     if ortho_threshold < 10 * np.finfo(float).eps:
         warnings.warn("Filter order is too large. Fixing it to keep stability.")
         k = np.floor(-0.5 * np.log(np.finfo(float).eps / np.sqrt(matrix.shape[0])))
-    if ortho_theshold > 1e-6:
+    if ortho_threshold > 1e-6:
         warnings.warn("Filter order is too small. Fixing it to avoid errors.")
         k = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0])))
 
