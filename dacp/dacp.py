@@ -8,6 +8,7 @@ import itertools as it
 
 import matplotlib.pyplot as plt
 
+
 def svd_decomposition(S, matrix_proj):
     """
     Perform SVD decomposition.
@@ -72,7 +73,7 @@ def low_E_filter(v_rand, F_operator, K_max):
     return v_n / np.linalg.norm(v_n, axis=0)
 
 
-def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
+def basis(v_proj, G_operator, dk, ortho_threshold, first_run=True, Q=None, R=None):
     """
     Generate a complete basis with Chebyshev evolution.
 
@@ -105,7 +106,7 @@ def basis(v_proj, G_operator, dk, first_run=True, Q=None, R=None):
                     Q=Q, R=R, u=vec, k=Q.shape[1], which="col", overwrite_qru=True
                 )
                 norm = np.arange(1, len(np.diag(R)) + 1)
-                ortho_condition = np.abs(np.diag(R) * norm) > 1e-12
+                ortho_condition = np.abs(np.diag(R) * norm) > ortho_threshold
                 if np.invert(ortho_condition).any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
@@ -219,7 +220,7 @@ def combine_loops_fast(S_diag, S_offdiag, S_prev):
     return S_combined
 
 
-def eigvals_init(v_proj, G_operator, matrix, dk):
+def eigvals_init(v_proj, G_operator, matrix, dk, ortho_threshold):
     """
     Compute eigenvalues for initial run.
 
@@ -276,7 +277,7 @@ def eigvals_init(v_proj, G_operator, matrix, dk):
             matrix_proj = matrix_proj.reshape((N, N))
             q_S, r_S = scipy.linalg.qr(S)
             norm = np.arange(1, len(np.diag(r_S)) + 1)
-            ortho_condition = np.abs(np.diag(r_S) * norm) > 1e-12
+            ortho_condition = np.abs(np.diag(r_S) * norm) > ortho_threshold
             if np.invert(ortho_condition).any():
                 return v_0, k_list, S, matrix_proj, q_S, r_S
             else:
@@ -436,6 +437,12 @@ def eigh(
 
         bounds = [lmin, lmax]
 
+    ortho_threshold = 10 * np.sqrt(matrix.shape[0]) * np.exp(-2 * filter_order)
+    if ortho_threshold < 10 * np.finfo(float).eps:
+        k = np.floor(-0.5 * np.log(np.finfo(float).eps / np.sqrt(matrix.shape[0])))
+    if ortho_theshold > 1e-6:
+        k = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0]))
+
     Emin = bounds[0] * (1 + eps)
     Emax = bounds[1] * (1 + eps)
     E0 = (Emax - Emin) / 2
@@ -464,12 +471,18 @@ def eigh(
 
     if return_eigenvectors:
         # First run
-        Q, R = basis(v_proj=get_filtered_vector(), G_operator=G_operator, dk=dk)
+        Q, R = basis(
+            v_proj=get_filtered_vector(),
+            G_operator=G_operator,
+            dk=dk,
+            ortho_threshold=ortho_threshold,
+        )
         # Second run
         Qi, Ri = basis(
             v_proj=get_filtered_vector(),
             G_operator=G_operator,
             dk=dk,
+            ortho_threshold=ortho_threshold,
             Q=Q,
             R=R,
             first_run=False,
@@ -481,6 +494,7 @@ def eigh(
                 v_proj=get_filtered_vector(),
                 G_operator=G_operator,
                 dk=dk,
+                ortho_threshold=ortho_threshold,
                 Q=Q,
                 R=R,
                 first_run=False,
@@ -499,10 +513,10 @@ def eigh(
             v_proj = get_filtered_vector()
             if N_loop == 0:
                 v_0, k_list, S, matrix_proj, q_S, r_S = eigvals_init(
-                    v_proj, G_operator, matrix, dk
+                    v_proj, G_operator, matrix, dk, ortho_threshold
                 )
                 norm = np.arange(1, len(np.diag(r_S)) + 1)
-                N_H_prev = sum(np.abs(np.diag(r_S) * norm) > 1e-12)
+                N_H_prev = sum(np.abs(np.diag(r_S) * norm) > ortho_threshold)
                 new_vals = N_H_prev
             else:
                 if new_vals <= random_vectors and not n_evolution:
@@ -533,9 +547,10 @@ def eigh(
                     which="row",
                 )
                 norm = np.arange(1, len(np.diag(r_S)) + 1)
-                N_H_cur = sum(np.abs(np.diag(r_S) * norm) > 1e-12)
+                N_H_cur = sum(np.abs(np.diag(r_S) * norm) > ortho_threshold)
                 new_vals = N_H_cur - N_H_prev
                 if new_vals > 0:
+                    print('currently found ' + str(N_H_cur) + ' eigenvalues')
                     N_H_prev = N_H_cur
                 else:
                     diagS = np.diag(np.diag(S))
