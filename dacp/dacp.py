@@ -85,6 +85,8 @@ def basis(v_proj, G_operator, dk, ortho_threshold, first_run=True, Q=None, R=Non
         Generator of Chebyshev evolution.
     dk : float
         Steps on Chebyshev evolution before collecting vector.
+    ortho_threshold : float
+        Threshold for orthogonality condition.
     first_run : boolean
         `True` if it is the first run of Chebyshev evolution before checking degeneracies.
     Q : 2D array
@@ -232,6 +234,8 @@ def eigvals_init(v_proj, G_operator, matrix, dk, ortho_threshold):
         Matrix to compute eigenvalues.
     dk : integer
         Largest Chebyshev evolution order.
+    ortho_threshold : float
+        Threshold for orthogonality condition.
     """
     S_xy = []
     matrix_xy = []
@@ -419,8 +423,17 @@ def eigh(
     error_window : float
         The fraction by which to expands the window size to account for errors.
     """
+
     if matrix.shape[0] != matrix.shape[1]:
         raise ValueError('expected square matrix (shape=%s)' % (matrix.shape,))
+    if filter_order <= 0:
+        raise ValueError("filter_order must be greater than 0.")
+    if eps < 0:
+        raise ValueError("eps must be greater than or equal to 0.")
+    if random_vectors <= 0:
+        raise ValueError("random_vectors must be greater than 0.")
+    if error_window < 0:
+        raise ValueError("error_window must be greater than or equal to 0.")
 
     if bounds is None:
         # Relative tolerance to which to calculate eigenvalues.  Because after
