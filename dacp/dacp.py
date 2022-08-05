@@ -4,7 +4,7 @@ import scipy.linalg
 import numpy as np
 from math import ceil
 import itertools as it
-
+import warnings
 
 import matplotlib.pyplot as plt
 
@@ -108,7 +108,7 @@ def basis(v_proj, G_operator, dk, ortho_threshold, first_run=True, Q=None, R=Non
                     Q=Q, R=R, u=vec, k=Q.shape[1], which="col", overwrite_qru=True
                 )
                 norm = np.arange(1, len(np.diag(R)) + 1)
-                ortho_condition = np.abs(np.diag(R) * norm**2) > ortho_threshold
+                ortho_condition = np.abs(np.diag(R) * norm) > ortho_threshold
                 if np.invert(ortho_condition).any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
@@ -281,7 +281,7 @@ def eigvals_init(v_proj, G_operator, matrix, dk, ortho_threshold):
             matrix_proj = matrix_proj.reshape((N, N))
             q_S, r_S = scipy.linalg.qr(S)
             norm = np.arange(1, len(np.diag(r_S)) + 1)
-            ortho_condition = np.abs(np.diag(r_S) * norm**2) > ortho_threshold
+            ortho_condition = np.abs(np.diag(r_S) * norm) > ortho_threshold
             if np.invert(ortho_condition).any():
                 return v_0, k_list, S, matrix_proj, q_S, r_S
             else:
@@ -395,7 +395,7 @@ def eigh(
     random_vectors=2,
     return_eigenvectors=False,
     filter_order=12,
-    error_window=0.0,
+    error_window=0.1,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -463,8 +463,7 @@ def eigh(
 
     ortho_threshold = 10 * np.sqrt(matrix.shape[0]) * np.exp(-2 * filter_order)
     if ortho_threshold < 10 * np.finfo(float).eps:
-        warnings.warn("Filter order is too large. Fixing it to keep stability.")
-        k = np.floor(-0.5 * np.log(np.finfo(float).eps / np.sqrt(matrix.shape[0])))
+        ortho_threshold = 10 * np.finfo(float).eps
     if ortho_threshold > 1e-6:
         warnings.warn("Filter order is too small. Fixing it to avoid errors.")
         k = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0])))
@@ -541,7 +540,7 @@ def eigh(
                     v_proj, G_operator, matrix, dk, ortho_threshold
                 )
                 norm = np.arange(1, len(np.diag(r_S)) + 1)
-                N_H_prev = sum(np.abs(np.diag(r_S) * norm**2) > ortho_threshold)
+                N_H_prev = sum(np.abs(np.diag(r_S) * norm) > ortho_threshold)
                 new_vals = N_H_prev
             else:
                 if new_vals <= random_vectors and not n_evolution:
@@ -572,10 +571,9 @@ def eigh(
                     which="row",
                 )
                 norm = np.arange(1, len(np.diag(r_S)) + 1)
-                N_H_cur = sum(np.abs(np.diag(r_S) * norm**2) > ortho_threshold)
+                N_H_cur = sum(np.abs(np.diag(r_S) * norm) > ortho_threshold)
                 new_vals = N_H_cur - N_H_prev
                 if new_vals > 0:
-                    print("currently found " + str(N_H_cur) + " eigenvalues")
                     N_H_prev = N_H_cur
                 else:
                     diagS = np.diag(np.diag(S))
