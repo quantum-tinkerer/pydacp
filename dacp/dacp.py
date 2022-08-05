@@ -453,7 +453,7 @@ def eigh(
         bounds = [lmin, lmax]
 
     a = window_size * (1 + error_window)
-    if a > min(bounds):
+    if a > min(abs(lmin), abs(lmax)):
         raise ValueError("a must be smaller than spectrum bounds.")
 
     ortho_threshold = 10 * np.sqrt(matrix.shape[0]) * np.exp(-2 * filter_order)
