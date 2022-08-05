@@ -391,7 +391,7 @@ def eigh(
     random_vectors=2,
     return_eigenvectors=False,
     filter_order=12,
-    error_window=0.,
+    error_window=0.
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -441,7 +441,7 @@ def eigh(
     if ortho_threshold < 10 * np.finfo(float).eps:
         k = np.floor(-0.5 * np.log(np.finfo(float).eps / np.sqrt(matrix.shape[0])))
     if ortho_theshold > 1e-6:
-        k = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0]))
+        k = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0])))
 
     Emin = bounds[0] * (1 + eps)
     Emax = bounds[1] * (1 + eps)
