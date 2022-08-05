@@ -390,8 +390,8 @@ def eigh(
     bounds=None,
     random_vectors=2,
     return_eigenvectors=False,
-    filter_order=14,
-    error_window=0.25,
+    filter_order=12,
+    error_window=0.,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
