@@ -452,6 +452,10 @@ def eigh(
 
         bounds = [lmin, lmax]
 
+    a = window_size * (1 + error_window)
+    if a > min(bounds):
+        raise ValueError("a must be smaller than spectrum bounds.")
+
     ortho_threshold = 10 * np.sqrt(matrix.shape[0]) * np.exp(-2 * filter_order)
     if ortho_threshold < 10 * np.finfo(float).eps:
         warnings.warn("Filter order is too large. Fixing it to keep stability.")
@@ -466,7 +470,6 @@ def eigh(
     Ec = (Emax + Emin) / 2
     G_operator = (matrix - eye(matrix.shape[0]) * Ec) / E0
 
-    a = window_size * (1 + error_window)
     Emax = np.max(np.abs(bounds)) * (1 + eps)
     E0 = (Emax**2 - a**2) / 2
     Ec = (Emax**2 + a**2) / 2
