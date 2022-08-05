@@ -9,7 +9,7 @@ import itertools as it
 import matplotlib.pyplot as plt
 
 
-def svd_decomposition(S, matrix_proj):
+def svd_decomposition(S, matrix_proj, ortho_threshold):
     """
     Perform SVD decomposition.
 
@@ -22,7 +22,7 @@ def svd_decomposition(S, matrix_proj):
         Projected matrix.
     """
     s, V = scipy.linalg.eigh(S)
-    indx = s > 1e-12
+    indx = s > ortho_threshold
     lambda_s = np.diag(1 / np.sqrt(s[indx]))
     U = V[:, indx] @ lambda_s
     return U.T.conj() @ matrix_proj @ U
@@ -108,7 +108,7 @@ def basis(v_proj, G_operator, dk, ortho_threshold, first_run=True, Q=None, R=Non
                     Q=Q, R=R, u=vec, k=Q.shape[1], which="col", overwrite_qru=True
                 )
                 norm = np.arange(1, len(np.diag(R)) + 1)
-                ortho_condition = np.abs(np.diag(R) * norm) > ortho_threshold
+                ortho_condition = np.abs(np.diag(R) * norm**2) > ortho_threshold
                 if np.invert(ortho_condition).any():
                     indices = np.invert(ortho_condition)
                     return Q[:, indices], R[indices, :][:, indices]
@@ -281,7 +281,7 @@ def eigvals_init(v_proj, G_operator, matrix, dk, ortho_threshold):
             matrix_proj = matrix_proj.reshape((N, N))
             q_S, r_S = scipy.linalg.qr(S)
             norm = np.arange(1, len(np.diag(r_S)) + 1)
-            ortho_condition = np.abs(np.diag(r_S) * norm) > ortho_threshold
+            ortho_condition = np.abs(np.diag(r_S) * norm**2) > ortho_threshold
             if np.invert(ortho_condition).any():
                 return v_0, k_list, S, matrix_proj, q_S, r_S
             else:
@@ -395,7 +395,7 @@ def eigh(
     random_vectors=2,
     return_eigenvectors=False,
     filter_order=12,
-    error_window=0.
+    error_window=0.0,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -425,7 +425,7 @@ def eigh(
     """
 
     if matrix.shape[0] != matrix.shape[1]:
-        raise ValueError('expected square matrix (shape=%s)' % (matrix.shape,))
+        raise ValueError("expected square matrix (shape=%s)" % (matrix.shape,))
     if filter_order <= 0:
         raise ValueError("filter_order must be greater than 0.")
     if eps < 0:
@@ -541,7 +541,7 @@ def eigh(
                     v_proj, G_operator, matrix, dk, ortho_threshold
                 )
                 norm = np.arange(1, len(np.diag(r_S)) + 1)
-                N_H_prev = sum(np.abs(np.diag(r_S) * norm) > ortho_threshold)
+                N_H_prev = sum(np.abs(np.diag(r_S) * norm**2) > ortho_threshold)
                 new_vals = N_H_prev
             else:
                 if new_vals <= random_vectors and not n_evolution:
@@ -572,15 +572,15 @@ def eigh(
                     which="row",
                 )
                 norm = np.arange(1, len(np.diag(r_S)) + 1)
-                N_H_cur = sum(np.abs(np.diag(r_S) * norm) > ortho_threshold)
+                N_H_cur = sum(np.abs(np.diag(r_S) * norm**2) > ortho_threshold)
                 new_vals = N_H_cur - N_H_prev
                 if new_vals > 0:
-                    print('currently found ' + str(N_H_cur) + ' eigenvalues')
+                    print("currently found " + str(N_H_cur) + " eigenvalues")
                     N_H_prev = N_H_cur
                 else:
                     diagS = np.diag(np.diag(S))
                     S = S - diagS + diagS.real
-                    H_red = svd_decomposition(S, matrix_proj)
+                    H_red = svd_decomposition(S, matrix_proj, ortho_threshold)
                     eigvals = scipy.linalg.eigvalsh(H_red)
                     window_args = np.abs(eigvals) < window_size
                     return eigvals[window_args]
