@@ -452,6 +452,11 @@ def eigh(
 
         bounds = [lmin, lmax]
 
+    if lmin > 0:
+        raise ValueError("Lower bound of the spectrum must be negative.")
+    if lmax > 0:
+        raise ValueError("Upper bound of the spectrum must be positive.")
+
     a = window_size * (1 + error_window)
     if a > min(abs(lmin), abs(lmax)):
         raise ValueError("a must be smaller than spectrum bounds.")
