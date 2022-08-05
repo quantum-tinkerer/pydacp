@@ -419,6 +419,8 @@ def eigh(
     error_window : float
         The fraction by which to expands the window size to account for errors.
     """
+    if matrix.shape[0] != matrix.shape[1]:
+        raise ValueError('expected square matrix (shape=%s)' % (matrix.shape,))
 
     if bounds is None:
         # Relative tolerance to which to calculate eigenvalues.  Because after
