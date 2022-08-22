@@ -30,7 +30,7 @@ true_vals /= Emax
 H /= Emax
 
 # %%time
-k=16
+k=12
 a = 0.1
 evals = eigh(
     H,
@@ -40,9 +40,19 @@ evals = eigh(
     return_eigenvectors=False,
     filter_order=k,
     error_window=0.,
+    extra_vecs=0.3
 )
 
-true_vals = np.sort(true_vals[np.argsort(np.abs(true_vals))][:len(evals)])
+map_eigv=[]
+for value in evals:
+    closest = np.abs(true_vals-value).min()
+    map_eigv.append(true_vals[np.abs(true_vals-value) == closest][0])
+# map_eigv = np.array(map_eigv)
+true_vals = np.array(map_eigv)
+
+# +
+# true_vals = np.sort(true_vals[np.argsort(np.abs(true_vals))][:len(evals)])
+# -
 
 print(len(evals), len(true_vals))
 
@@ -65,7 +75,7 @@ plt.show()
 
 delta = (np.sqrt(N) * np.exp(-2 * k))**(1.4)
 
-# delta = 1.2e-16
+delta = 1.2e-16
 Ei = np.linspace(-a, a, 300)
 c_i_sq = np.exp(4*k*np.sqrt(a**2-Ei**2)/a)
 eta = delta*np.exp(4*k)/(np.abs(Ei)*c_i_sq)
