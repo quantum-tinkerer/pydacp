@@ -9,7 +9,7 @@ import warnings
 import matplotlib.pyplot as plt
 
 
-def svd_decomposition(S, matrix_proj, ortho_threshold):
+def svd_decomposition(S, matrix_proj):
     """
     Perform SVD decomposition.
 
@@ -22,7 +22,7 @@ def svd_decomposition(S, matrix_proj, ortho_threshold):
         Projected matrix.
     """
     s, V = scipy.linalg.eigh(S)
-    indx = s > ortho_threshold
+    indx = s > 1e-12
     lambda_s = np.diag(1 / np.sqrt(s[indx]))
     U = V[:, indx] @ lambda_s
     return U.T.conj() @ matrix_proj @ U
@@ -593,7 +593,7 @@ def eigh(
                         )
                     diagS = np.diag(np.diag(S))
                     S = S - diagS + diagS.real
-                    H_red = svd_decomposition(S, matrix_proj, ortho_threshold)
+                    H_red = svd_decomposition(S, matrix_proj)
                     eigvals = scipy.linalg.eigvalsh(H_red)
                     window_args = np.abs(eigvals) < window_size
                     return eigvals[window_args]
