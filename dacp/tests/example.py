@@ -16,7 +16,7 @@ plt.rcParams["font.size"] = 16
 plt.rcParams["legend.fontsize"] = 16
 
 # +
-N = int(1e3)
+N = int(4e2)
 np.random.seed(1)
 c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
@@ -25,9 +25,16 @@ H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
 # -
 
 # %%time
-evals, _ = eigh(
-    H, window_size=0.1, eps=0.05, random_vectors=2, return_eigenvectors=True, filter_order=14
+evals = eigh(
+    H, window_size=0.1, eps=0.05, random_vectors=2, return_eigenvectors=False, filter_order=14
 )
+
+# +
+# # %%time
+# evals, _ = eigh(
+#     H, window_size=0.1, eps=0.05, random_vectors=2, return_eigenvectors=True, filter_order=14
+# )
+# -
 
 # %%time
 true_vals, true_vecs=eigsh(H, return_eigenvectors=True, sigma=0, k=evals.shape[0])
@@ -49,3 +56,5 @@ plt.xlabel(r'$E_i$')
 # plt.xlim(-0.1, 0.1)
 # plt.yscale('log')
 plt.show()
+
+
