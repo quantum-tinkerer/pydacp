@@ -396,6 +396,7 @@ def eigh(
     return_eigenvectors=False,
     filter_order=14,
     error_window=0.1,
+    extra_vecs = 0.3,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -577,19 +578,19 @@ def eigh(
                 if new_vals > 0:
                     N_H_prev = N_H_cur
                 else:
-                    overcompletion = int(N_H_cur/random_vectors*0.3)
+                    overcompletion = int(N_H_cur / random_vectors * extra_vecs)
                     for i in range(overcompletion):
                         v_0, S, matrix_proj = eigvals_deg(
-                        v_0,
-                        v_proj,
-                        k_list,
-                        S,
-                        matrix_proj,
-                        G_operator,
-                        matrix,
-                        dk,
-                        n_evolution,
-                        )   
+                            v_0,
+                            v_proj,
+                            k_list,
+                            S,
+                            matrix_proj,
+                            G_operator,
+                            matrix,
+                            dk,
+                            n_evolution,
+                        )
                     diagS = np.diag(np.diag(S))
                     S = S - diagS + diagS.real
                     H_red = svd_decomposition(S, matrix_proj, ortho_threshold)
