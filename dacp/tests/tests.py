@@ -57,7 +57,8 @@ def eigv_errors(H, window_size, **dacp_kwargs):
     c_i_sq = np.exp(4 * 12 * np.sqrt(a_w**2 - map_eigv**2) / a_w)
     eta = delta * np.exp(4 * 12) / (np.abs(map_eigv) * c_i_sq)
 
-    return np.log10(np.abs(relative_error - eta))
+    diff = relative_error - eta
+    return np.log10(np.heaviside(diff, 0) * diff / eta)
 
 
 def eigv_errors_test(loop_n, deg=False, **dacp_kwargs):
