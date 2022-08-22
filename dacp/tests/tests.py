@@ -14,16 +14,19 @@ deg_n = 4
 loop_n = 30
 window_size = 0.1
 
+
 def random_ham(N):
-    c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
+    c = 2 * (np.random.rand(N - 1) + np.random.rand(N - 1) * 1j - 0.5 * (1 + 1j))
     b = 2 * (np.random.rand(N) - 0.5)
 
     H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
     return csr_matrix(H)
 
+
 def random_ham_deg(N, deg):
     H = random_ham(N)
     return csr_matrix(kron(H, eye(deg)))
+
 
 # +
 def eigv_errors(H, window_size, **dacp_kwargs):
@@ -37,21 +40,25 @@ def eigv_errors(H, window_size, **dacp_kwargs):
 
     map_eigv = []
     for value in eigv_dacp:
-        closest = np.abs(eigv-value).min()
-        map_eigv.append(eigv[np.abs(eigv-value) == closest][0])
+        closest = np.abs(eigv - value).min()
+        map_eigv.append(eigv[np.abs(eigv - value) == closest][0])
     map_eigv = np.array(map_eigv)
 
     map_eigv = map_eigv[np.argsort(np.abs(map_eigv))]
     eigv_dacp = eigv_dacp[np.argsort(np.abs(eigv_dacp))]
 
-    N_scipy = len(map_eigv)
-    N_min = np.min([N_dacp, N_scipy])
+    relative_error = np.abs((eigv_dacp - map_eigv) / map_eigv)
 
-    relative_error = np.abs(np.abs(eigv_dacp[:N_min]) - np.abs(map_eigv[:N_min])) / np.abs(
-        eigv[:N_min]
-    )
+    # Compute the theoretical error eta
+    delta = np.finfo(float).eps
+    # 0.1 comes from error window
+    a_w = window_size * 1.1
+    # 12 comes from filter order
+    c_i_sq = np.exp(4 * 12 * np.sqrt(a_w**2 - map_eigv**2) / a_w)
+    eta = delta * np.exp(4 * 12) / (np.abs(map_eigv) * c_i_sq)
 
-    return relative_error
+    return np.log10(np.abs(relative_error - eta))
+
 
 def eigv_errors_test(loop_n, deg=False, **dacp_kwargs):
     relative_error_list = []
@@ -61,9 +68,7 @@ def eigv_errors_test(loop_n, deg=False, **dacp_kwargs):
             H = random_ham_deg(N_block, deg_n)
         else:
             H = random_ham(N)
-        relative_error = eigv_errors(
-            H, window_size, **dacp_kwargs
-        )
+        relative_error = eigv_errors(H, window_size, **dacp_kwargs)
         relative_error_list.append(np.max(relative_error))
 
     return np.asarray(relative_error_list)
@@ -139,24 +144,20 @@ class TestEigh(unittest.TestCase):
         """
         Test the eigenvalue only method
         """
-        relative_error = eigv_errors_test(loop_n)
-        above_threshold = relative_error[relative_error > max_error_tresh]
+        error_diff = eigv_errors_test(loop_n)
         self.assertTrue(
-            len(above_threshold) < 3,
-            msg=f"Eigenvalue relative errors too high in {len(above_threshold)} out of {loop_n} runs.",
+            error_diff.any() < 2,
+            msg=f"Errors don't match the theoretical value.",
         )
 
     def test_eigvals_deg(self):
         """
         Test the eigenvalue only method
         """
-        relative_error = eigv_errors_test(
-            loop_n, deg=True, random_vectors=2
-        )
-        above_threshold = relative_error[relative_error > max_error_tresh]
+        error_diff = eigv_errors_test(loop_n, deg=True, random_vectors=2)
         self.assertTrue(
-            len(above_threshold) < 3,
-            msg=f"Eigenvalue relative errors too high in {len(above_threshold)} out of {loop_n} runs.",
+            error_diff.any() < 2,
+            msg=f"Errors don't match the theoretical value.",
         )
 
     # def test_eigvecs(self):
