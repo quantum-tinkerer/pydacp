@@ -394,7 +394,7 @@ def eigh(
     bounds=None,
     random_vectors=2,
     return_eigenvectors=False,
-    filter_order=12,
+    filter_order=14,
     error_window=0.1,
 ):
     """
@@ -463,10 +463,11 @@ def eigh(
 
     ortho_threshold = 10 * np.sqrt(matrix.shape[0]) * np.exp(-2 * filter_order)
     if ortho_threshold < 10 * np.finfo(float).eps:
+        warnings.warn("Results limited by numerical precision.")
         ortho_threshold = 10 * np.finfo(float).eps
     if ortho_threshold > 1e-6:
         warnings.warn("Filter order is too small. Fixing it to avoid errors.")
-        k = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0])))
+        filter_order = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0])))
 
     Emin = bounds[0] * (1 + eps)
     Emax = bounds[1] * (1 + eps)
