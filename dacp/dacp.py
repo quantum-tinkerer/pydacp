@@ -394,7 +394,7 @@ def eigh(
     bounds=None,
     random_vectors=2,
     return_eigenvectors=False,
-    filter_order=14,
+    filter_order=12,
     error_window=0.1,
     extra_vecs = 0.3,
 ):
