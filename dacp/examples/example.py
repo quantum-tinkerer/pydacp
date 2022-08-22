@@ -47,14 +47,7 @@ map_eigv=[]
 for value in evals:
     closest = np.abs(true_vals-value).min()
     map_eigv.append(true_vals[np.abs(true_vals-value) == closest][0])
-# map_eigv = np.array(map_eigv)
 true_vals = np.array(map_eigv)
-
-# +
-# true_vals = np.sort(true_vals[np.argsort(np.abs(true_vals))][:len(evals)])
-# -
-
-print(len(evals), len(true_vals))
 
 true_vals=np.sort(true_vals)
 n=np.arange(-evals.shape[0]/2, evals.shape[0]/2)
@@ -94,7 +87,7 @@ plt.show()
 # ## Degenerate case
 
 # +
-N = int(1e2)
+N = int(1e3)
 c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
@@ -104,22 +97,24 @@ H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
 H = kron(H, eye(4))
 
 # %%time
-evals = eigh(
+evals, vecs = eigh(
     H,
-    window_size=0.1,
+    window_size=a,
     eps=0.05,
-    random_vectors=2,
-    return_eigenvectors=False,
-    filter_order=14,
-    error_window=0.25,
+    random_vectors=5,
+    return_eigenvectors=True,
+    filter_order=k,
+    error_window=error_window
 )
 
 # %%time
 true_vals=np.linalg.eigvalsh(H.todense())
-true_vals = true_vals[np.abs(true_vals) < 0.1]
 
-print(len(true_vals), len(evals))
-len(true_vals) == len(evals)
+map_eigv=[]
+for value in evals:
+    closest = np.abs(true_vals-value).min()
+    map_eigv.append(true_vals[np.abs(true_vals-value) == closest][0])
+true_vals = np.array(map_eigv)
 
 true_vals=np.sort(true_vals)
 n=np.arange(-evals.shape[0]/2, evals.shape[0]/2)
@@ -136,10 +131,22 @@ plt.scatter(evals, np.abs(true_vals - evals))
 plt.ylabel(r'$\delta E_i$')
 plt.xlabel(r'$E_i$')
 plt.yscale('log')
+plt.axhline(np.finfo(float).eps, ls='--', c='k')
 plt.show()
 
-plt.scatter(evals, np.abs((true_vals - evals)/evals))
-plt.ylabel(r'$\delta E_i$')
+delta = (np.sqrt(N) * np.exp(-2 * k))**(1.4)
+
+delta = np.finfo(float).eps
+a_w = a * (1 + error_window)
+Ei = np.linspace(-a_w, a_w, 300)
+c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - Ei**2) / a_w)
+eta = delta * np.exp(4 * k) / (np.abs(Ei) * c_i_sq)
+
+plt.plot(Ei, eta, 'r')
+plt.fill_between(Ei, 0.01*eta, 100*eta, alpha=0.4, fc='r')
+plt.scatter(evals, np.abs((true_vals - evals)/evals), c='k', zorder=10, s=1)
+plt.ylabel(r'$|\delta E_i/E_i|$')
 plt.xlabel(r'$E_i$')
 plt.yscale('log')
+plt.xlim(-a, a)
 plt.show()
