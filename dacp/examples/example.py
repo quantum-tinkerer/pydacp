@@ -16,7 +16,7 @@ plt.rcParams["font.size"] = 18
 plt.rcParams["legend.fontsize"] = 18
 
 # +
-N = int(2e3)
+N = int(1e4)
 c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
@@ -32,15 +32,15 @@ H /= Emax
 # %%time
 k=12
 a = 0.1
+error_window = 0.
 evals = eigh(
     H,
     window_size=a,
     eps=0.05,
-    random_vectors=10,
+    random_vectors=20,
     return_eigenvectors=False,
     filter_order=k,
-    error_window=0.,
-    extra_vecs=0.3
+    error_window=error_window
 )
 
 map_eigv=[]
@@ -71,14 +71,16 @@ plt.scatter(evals, np.abs(true_vals - evals))
 plt.ylabel(r'$\delta E_i$')
 plt.xlabel(r'$E_i$')
 plt.yscale('log')
+plt.axhline(np.finfo(float).eps, ls='--', c='k')
 plt.show()
 
 delta = (np.sqrt(N) * np.exp(-2 * k))**(1.4)
 
-delta = 1.2e-16
-Ei = np.linspace(-a, a, 300)
-c_i_sq = np.exp(4*k*np.sqrt(a**2-Ei**2)/a)
-eta = delta*np.exp(4*k)/(np.abs(Ei)*c_i_sq)
+delta = np.finfo(float).eps
+a_w = a * (1 + error_window)
+Ei = np.linspace(-a_w, a_w, 300)
+c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - Ei**2) / a_w)
+eta = delta * np.exp(4 * k) / (np.abs(Ei) * c_i_sq)
 
 plt.plot(Ei, eta, 'r')
 plt.fill_between(Ei, 0.01*eta, 100*eta, alpha=0.4, fc='r')
