@@ -7,9 +7,9 @@ from scipy.sparse import diags, eye
 
 # +
 max_error_tresh = 1e-4
-max_eigvec_tresh = 1e-3
-N = 400
-N_block = 100
+max_eigvec_tresh = 1e-10
+N = 200
+N_block = 50
 deg_n = 4
 loop_n = 30
 window_size = 0.1
@@ -84,12 +84,12 @@ def eigs_errors(H, window_size, **dacp_kwargs):
     else:
         eigv_dacp, eigs_dacp = eigh(H, window_size, return_eigenvectors=True)
 
-    N_dacp = len(eigv_dacp)
-
     map_eigv = []
     for value in eigv_dacp:
         closest = np.abs(eigv - value).min()
-        map_eigv.append(eigv[np.abs(eigv - value) == closest][0])
+        indx = np.where(np.abs(eigv - value) == closest)[0][0]
+        map_eigv.append(eigv[indx])
+        eigv = np.delete(eigv, indx)
     map_eigv = np.array(map_eigv)
 
     map_eigv = map_eigv[np.argsort(np.abs(map_eigv))]
@@ -106,16 +106,12 @@ def eigs_errors(H, window_size, **dacp_kwargs):
     eta = delta * np.exp(4 * 12) / (np.abs(map_eigv[map_eigv < window_size]) * c_i_sq)
 
     diff = relative_error - eta
-
-    # r = np.einsum("ij, kj -> ki", H.todense(), eigs_dacp[:N_min]) - np.einsum(
-    #     "i, ij -> ij", eigv_dacp[:N_min], eigs_dacp[:N_min]
-    # )
-    # r = np.linalg.norm(r, axis=1)
-    return np.log10(np.heaviside(diff, 0) * diff / eta)#, r
+    return np.log10(np.heaviside(diff, 0) * diff / eta)
 
 
 def eigs_errors_test(loop_n, deg=False, **dacp_kwargs):
     relative_error_list = []
+    r_list = []
 
     for i in range(loop_n):
         if deg:
@@ -123,10 +119,10 @@ def eigs_errors_test(loop_n, deg=False, **dacp_kwargs):
         else:
             H = random_ham(N)
         relative_error = eigs_errors(H, window_size, **dacp_kwargs)
-        relative_error_list.append(np.max(relative_error))
+        if relative_error.size != 0:
+            relative_error_list.append(np.max(relative_error))
 
     return np.asarray(relative_error_list)
-
 
 # +
 class TestEigh(unittest.TestCase):
@@ -154,11 +150,13 @@ class TestEigh(unittest.TestCase):
         """
         Test the eigenvector method
         """
-        error_diff = eigv_errors_test(loop_n)
+        error_diff = eigs_errors_test(loop_n)
         self.assertTrue(
             error_diff.any() < 2,
             msg=f"Errors don't match the theoretical value.",
         )
+
+
 
     def test_eigvecs_deg(self):
         """
