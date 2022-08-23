@@ -6,8 +6,6 @@ import unittest
 from scipy.sparse import diags, eye
 
 # +
-max_error_tresh = 1e-4
-max_eigvec_tresh = 1e-10
 N = 400
 N_block = 100
 deg_n = 4
