@@ -2,8 +2,6 @@ from scipy.sparse.linalg import eigsh
 from scipy.sparse import eye, csr_matrix
 import scipy.linalg
 import numpy as np
-from math import ceil
-import itertools as it
 import warnings
 
 import matplotlib.pyplot as plt
@@ -492,7 +490,7 @@ def eigh(
         return vec / np.linalg.norm(vec, axis=0)
 
     a_r = a / np.max(np.abs(bounds))
-    dk = ceil(np.pi / a_r)
+    dk = np.ceil(np.pi / a_r)
 
     if return_eigenvectors:
         # First run
