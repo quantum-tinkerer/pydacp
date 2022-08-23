@@ -70,7 +70,8 @@ def eigv_errors_test(loop_n, deg=False, **dacp_kwargs):
         else:
             H = random_ham(N)
         relative_error = eigv_errors(H, window_size, **dacp_kwargs)
-        relative_error_list.append(np.max(relative_error))
+        if relative_error.size != 0:
+            relative_error_list.append(np.max(relative_error))
 
     return np.asarray(relative_error_list)
 
