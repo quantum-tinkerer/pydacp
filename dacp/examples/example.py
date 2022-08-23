@@ -16,7 +16,7 @@ plt.rcParams["font.size"] = 18
 plt.rcParams["legend.fontsize"] = 18
 
 # +
-N = int(1e4)
+N = int(1e3)
 c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
@@ -54,8 +54,6 @@ n=np.arange(-evals.shape[0]/2, evals.shape[0]/2)
 plt.scatter(n, evals, c='k')
 n_true=np.arange(-true_vals.shape[0]/2, true_vals.shape[0]/2)
 plt.scatter(n_true, true_vals, c='r', s=4)
-# plt.ylim(-0.1, 0.1)
-# plt.xlim(np.min(n), np.max(n))
 plt.ylabel(r'$E_i$')
 plt.xlabel(r'$n$')
 plt.show()
@@ -87,7 +85,7 @@ plt.show()
 # ## Degenerate case
 
 # +
-N = int(1e3)
+N = int(250)
 c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
@@ -121,8 +119,6 @@ n=np.arange(-evals.shape[0]/2, evals.shape[0]/2)
 plt.scatter(n, evals, c='k')
 n_true=np.arange(-true_vals.shape[0]/2, true_vals.shape[0]/2)
 plt.scatter(n_true, true_vals, c='r', s=4)
-# plt.ylim(-0.1, 0.1)
-# plt.xlim(np.min(n), np.max(n))
 plt.ylabel(r'$E_i$')
 plt.xlabel(r'$n$')
 plt.show()
