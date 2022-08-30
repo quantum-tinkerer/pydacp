@@ -1,12 +1,26 @@
 # pyDACP
 
-A python library to compute eigenvalues using the dual applications of Chebyshev polynomials algorithm.
+A python package to compute eigenvalues using the dual applications of Chebyshev polynomials algorithm. The algorithm is described in [SciPost Phys. 11, 103 (2021)](https://scipost.org/SciPostPhys.11.6.103).
+
+This package implements an algorithm that computes the eigenvalues of hermitian linear opeators within a given window. Besides the original algorithm, we also provide a way to deal with degeneracies systematically, and remove the need of prior estimations of the number of eigenvalues.
 
 ## Content
+
+* Instalation
 * The algorithm
     + First application of Chebyshev polynomials
-    + Second application of Chebyshev polynomials, a.k.a. the Chebyshev evolution, a.k.a. the Chebolution&trade;
+    + Second application of Chebyshev polynomials
+    + Dealing with degeneracies
+        - Eigenvalues + eigenvectors method (under development)
+        - Eigenvalues-only method
 * Usage example
+
+## Installation
+
+After cloning the repository, simply run:
+```
+pip install .
+```
 
 ## The algorithm
 
@@ -33,7 +47,7 @@ which indeed filters states within the $`[-a, a]`$ window. So,
 T_k(\mathcal{F})|r\rangle = |r_E\rangle.
 ```
 
-### Second application of Chebyshev polynomials, a.k.a. the Chebyshev evolution, a.k.a. the Chebolution&trade;
+### Second application of Chebyshev polynomials
 
 Now we have one single vector $`|r_E\rangle`$ within the energy window we want.
 And we use again Chebyshev polynomials to span the full basis of the subspace $`\mathcal{L}`$ 
@@ -68,7 +82,7 @@ The method above is not able to resolve degeneracies: each random vector can onl
 Therefore, we solve the problem by adding more random vectors.
 The library has two different implementations to solve degeneracies, which defines the methods that return or not the eigenvectors.
 
-#### Eigenvalues + eigenvectors method
+#### Eigenvalues + eigenvectors method (under development)
 
 To make sure a complete basis is generated, after the end of each Chebolution&trade run finishes, we diagonalize the set of eigenvectors by performing QR-decomposition of $`[\psi_k]`$:
 ```math
@@ -92,10 +106,12 @@ Instead, we perform QR decomposition of the overlap matrix, and similarly to the
 * Eigenvalues-only
 ```python
 from dacp.dacp import eigh
+# Generate a random matrix with size 100 x 100
 N = 100
 matrix = random_values((N,N)) + random_values((N,N))*1j
 matrix = (matrix.conj().T + matrix)/(2*np.sqrt(N))
 matrix = csr_matrix(matrix)
+# Compute eigenvalues
 eigvals = eigh(matrix, window_size)
 ```
 
