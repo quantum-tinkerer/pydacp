@@ -5,8 +5,6 @@ import numpy as np
 import warnings
 import itertools as it
 
-import matplotlib.pyplot as plt
-
 
 def svd_decomposition(S, matrix_proj):
     """
