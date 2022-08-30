@@ -583,3 +583,12 @@ def eigh(
                     window_args = np.abs(eigvals) < window_size
                     return eigvals[window_args]
             N_loop += 1
+
+def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
+    window_size = (window[1] - window[0]) / 2
+    delta = np.finfo(float).eps
+    alpha = 1 / (4 * filter_order) * np.log(tol * window_size / np.finfo(float).eps)
+    a_w = window_size / np.sqrt(2 * alpha - alpha**2)
+    c_i_sq = np.exp(4 * filter_order * np.sqrt(a_w**2 - eigvals**2) / a_w)
+    return np.abs(delta * np.exp(4 * filter_order) / (eigvals * c_i_sq))
+    
