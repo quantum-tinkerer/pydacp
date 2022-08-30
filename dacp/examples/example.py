@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # +
-from dacp.dacp import eigh, estimated_errors
+from dacp.dacp import eigvalsh, estimated_errors
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
@@ -37,11 +37,10 @@ k=12
 a = 0.1
 tol=1e-3
 window=[-a, 2*a]
-evals = eigh(
+evals = eigvalsh(
     H,
     window=window,
     random_vectors=10,
-    return_eigenvectors=False,
     filter_order=k,
     tol=tol
 )
@@ -123,11 +122,11 @@ H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
 H = kron(H, eye(4))
 
 # %%time
-evals = eigh(
+window=[-a, a]
+evals = eigvalsh(
     H,
-    window=[-a, a],
+    window=window,
     random_vectors=5,
-    return_eigenvectors=False,
     filter_order=k,
     tol=tol
 )
@@ -156,6 +155,15 @@ plt.xlabel(r'$E_i$')
 plt.yscale('log')
 plt.axhline(np.finfo(float).eps, ls='--', c='k')
 plt.show()
+
+window_size = (window[1] - window[0]) / 2
+sigma = (window[1] + window[0]) / 2
+delta = np.finfo(float).eps
+alpha = 1 / (4 * k) * np.log(tol * window_size / np.finfo(float).eps)
+a_w = window_size / np.sqrt(2 * alpha - alpha**2)
+Ei = np.linspace(window[0], window[1], 300)
+c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - (Ei - sigma)**2) / a_w)
+eta = delta * np.exp(4 * k) / (np.abs(Ei) * c_i_sq)
 
 plt.plot(Ei, eta, 'r')
 plt.fill_between(Ei, 0.01*eta, 100*eta, alpha=0.4, fc='r')
