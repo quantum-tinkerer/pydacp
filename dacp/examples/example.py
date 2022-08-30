@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # +
-from dacp.dacp import eigh
+from dacp.dacp import eigh, estimated_errors
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
@@ -93,6 +93,13 @@ plt.yscale('log')
 plt.xlim(-a, a)
 plt.show()
 
+plt.scatter(evals, estimated_errors(evals, [-a,a]), c='b', s=10, marker='+')
+plt.ylabel(r'$|\delta E_i/E_i|$')
+plt.xlabel(r'$E_i$')
+plt.yscale('log')
+plt.xlim(-a, a)
+plt.show()
+
 # ## Degenerate case
 
 # +
@@ -148,3 +155,11 @@ plt.xlabel(r'$E_i$')
 plt.yscale('log')
 plt.xlim(-a, a)
 plt.show()
+
+
+
+
+
+
+
+
