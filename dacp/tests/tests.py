@@ -1,14 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from dacp.dacp import eigh
+from dacp.dacp import eigh, eigvalsh
 from scipy.sparse import csr_matrix, kron
 import unittest
 from scipy.sparse import diags, eye
 
 # +
-N = 400
-N_block = 100
-deg_n = 4
+N = 1000
+N_block = 200
+deg_n = 5
 loop_n = 30
 window_size = 0.1
 window=[-window_size, window_size]
