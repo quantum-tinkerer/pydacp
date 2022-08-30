@@ -21,27 +21,32 @@ c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
 H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
-# -
+H = diags(b, offsets=0)
 
+# +
 # %%time
 true_vals, true_vecs=np.linalg.eigh(H.todense())
+
 Emax = np.max(true_vals)
 true_vals /= Emax
 H /= Emax
+# -
 
 # %%time
 k=12
 a = 0.1
 tol=1e-3
-error_window = 0.1
+window=[-a, 2*a]
 evals = eigh(
     H,
-    window=[-a,a],
+    window=window,
     random_vectors=10,
     return_eigenvectors=False,
     filter_order=k,
     tol=tol
 )
+
+print(np.min(evals), np.max(evals))
 
 map_eigv=[]
 for value in evals:
@@ -77,11 +82,13 @@ plt.axhline(np.finfo(float).eps, ls='--', c='k')
 plt.axhline(1/N, ls='--', c='k')
 plt.show()
 
+window_size = (window[1] - window[0]) / 2
+sigma = (window[1] + window[0]) / 2
 delta = np.finfo(float).eps
-alpha = 1 / (4 * k) * np.log(tol * a / np.finfo(float).eps)
-a_w = a / np.sqrt(2 * alpha - alpha**2)
-Ei = np.linspace(-a_w, a_w, 300)
-c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - Ei**2) / a_w)
+alpha = 1 / (4 * k) * np.log(tol * window_size / np.finfo(float).eps)
+a_w = window_size / np.sqrt(2 * alpha - alpha**2)
+Ei = np.linspace(window[0], window[1], 300)
+c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - (Ei - sigma)**2) / a_w)
 eta = delta * np.exp(4 * k) / (np.abs(Ei) * c_i_sq)
 
 plt.plot(Ei, eta, 'r')
@@ -90,14 +97,17 @@ plt.scatter(evals, np.abs((true_vals - evals)/evals), c='k', zorder=10, s=1)
 plt.ylabel(r'$|\delta E_i/E_i|$')
 plt.xlabel(r'$E_i$')
 plt.yscale('log')
-plt.xlim(-a, a)
+plt.xlim(window[0], window[1])
 plt.show()
 
-plt.scatter(evals, estimated_errors(evals, [-a,a]), c='b', s=10, marker='+')
+np.max(true_vals)
+
+plt.scatter(evals, estimated_errors(evals, window), c='b', s=10, marker='+')
+plt.plot(Ei, eta, 'r')
 plt.ylabel(r'$|\delta E_i/E_i|$')
 plt.xlabel(r'$E_i$')
 plt.yscale('log')
-plt.xlim(-a, a)
+plt.xlim(window[0], window[1])
 plt.show()
 
 # ## Degenerate case
