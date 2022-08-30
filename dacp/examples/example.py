@@ -155,11 +155,3 @@ plt.xlabel(r'$E_i$')
 plt.yscale('log')
 plt.xlim(-a, a)
 plt.show()
-
-
-
-
-
-
-
-
