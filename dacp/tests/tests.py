@@ -33,9 +33,9 @@ def random_ham_deg(N, deg):
 def eigv_errors(H, window, **dacp_kwargs):
     eigv, eigs = np.linalg.eigh(H.todense())
     if dacp_kwargs:
-        eigv_dacp = eigh(H, window, **dacp_kwargs)
+        eigv_dacp = eigvalsh(H, window, **dacp_kwargs)
     else:
-        eigv_dacp = eigh(H, window)
+        eigv_dacp = eigvalsh(H, window)
 
     N_dacp = len(eigv_dacp)
 
@@ -79,10 +79,10 @@ def eigs_errors(H, window, **dacp_kwargs):
     eigv, eigs = np.linalg.eigh(H.todense())
     if dacp_kwargs:
         eigv_dacp, eigs_dacp = eigh(
-            H, window, return_eigenvectors=True, **dacp_kwargs
+            H, window, **dacp_kwargs
         )
     else:
-        eigv_dacp, eigs_dacp = eigh(H, window, return_eigenvectors=True)
+        eigv_dacp, eigs_dacp = eigh(H, window)
 
     map_eigv = []
     for value in eigv_dacp:
@@ -144,29 +144,27 @@ class TestEigh(unittest.TestCase):
             msg=f"Errors don't match the theoretical value.",
         )
 
-    def test_eigvecs(self):
-        """
-        Test the eigenvector method
-        """
-        error_diff = eigs_errors_test(loop_n)
-        self.assertTrue(
-            error_diff.any() < 2,
-            msg=f"Errors don't match the theoretical value.",
-        )
+#     def test_eigvecs(self):
+#         """
+#         Test the eigenvector method
+#         """
+#         error_diff = eigs_errors_test(loop_n)
+#         self.assertTrue(
+#             error_diff.any() < 2,
+#             msg=f"Errors don't match the theoretical value.",
+#         )
 
-
-
-    def test_eigvecs_deg(self):
-        """
-        Test the eigenvector method
-        """
-        error_diff = eigs_errors_test(
-            loop_n, deg=True, random_vectors=2
-        )
-        self.assertTrue(
-            error_diff.any() < 2,
-            msg=f"Errors don't match the theoretical value.",
-        )
+#     def test_eigvecs_deg(self):
+#         """
+#         Test the eigenvector method
+#         """
+#         error_diff = eigs_errors_test(
+#             loop_n, deg=True, random_vectors=2
+#         )
+#         self.assertTrue(
+#             error_diff.any() < 2,
+#             msg=f"Errors don't match the theoretical value.",
+#         )
 
 
 if __name__ == "__main__":
