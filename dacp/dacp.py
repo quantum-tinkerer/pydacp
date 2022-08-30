@@ -247,7 +247,6 @@ def eigvals_init(v_proj, G_operator, A, dk, ortho_threshold):
     v_0 = v_proj[
         np.newaxis,
     ]
-
     while True:
         v_n = next(chebyshev_recursion)
         if k_latest == storage_list[-1]:
@@ -433,14 +432,26 @@ def eigh(
 
     eps = 0.1
 
+    if isinstance(A, np.ndarray):
+        eye = np.eye(A.shape[0])
+    elif scipy.sparse.issparse(A):
+        eye = scipy.sparse.eye(A.shape[0])
+    elif isinstance(A, scipy.sparse.linalg._interface._CustomLinearOperator):
+        def mv(v):
+            return v
+        eye = LinearOperator((A.shape[0], A.shape[0]), matvec=mv)
+    else:
+        raise TypeError("A is wrong dtype: needs to be ndarray, sparse matrix or LinearOperator")
+
+    A = A - eye * sigma
+
     if bounds is None:
         # Relative tolerance to which to calculate eigenvalues.  Because after
         # rescaling we will add eps / 2 to the spectral bounds, we don't need
         # to know the bounds more accurately than eps / 2.
-        tol = 0.05
 
-        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=tol))
-        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=tol))
+        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=eps/2))
+        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=eps/2))
 
         if lmax - lmin <= abs(lmax + lmin) * eps / 4:
             raise ValueError(
@@ -472,12 +483,12 @@ def eigh(
     Emax = bounds[1] * (1 + eps)
     E0 = (Emax - Emin) / 2
     Ec = (Emax + Emin) / 2
-    G_operator = (A - eye(A.shape[0]) * Ec) / E0
+    G_operator = (A - eye * Ec)*(1 / E0)
 
     Emax = np.max(np.abs(bounds)) * (1 + eps)
     E0 = (Emax**2 - a**2) / 2
     Ec = (Emax**2 + a**2) / 2
-    F_operator = (A @ A - eye(A.shape[0]) * Ec) / E0
+    F_operator = (A @ A - eye * Ec) * (1/E0)
 
     def get_filtered_vector():
         v_rand = 2 * (
@@ -528,7 +539,7 @@ def eigh(
         eigvals, eigvecs = scipy.linalg.eigh(matrix_proj)
         eigvecs = (Q @ eigvecs).T
         window_args = np.abs(eigvals) < window_size
-        return eigvals[window_args], eigvecs[window_args, :]
+        return eigvals[window_args] + sigma, eigvecs[window_args, :]
 
     else:
         N_loop = 0
@@ -581,14 +592,15 @@ def eigh(
                     H_red = svd_decomposition(S, matrix_proj)
                     eigvals = scipy.linalg.eigvalsh(H_red)
                     window_args = np.abs(eigvals) < window_size
-                    return eigvals[window_args]
+                    return eigvals[window_args] + sigma
             N_loop += 1
 
 def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
     window_size = (window[1] - window[0]) / 2
+    sigma = (window[1] + window[0]) / 2
     delta = np.finfo(float).eps
     alpha = 1 / (4 * filter_order) * np.log(tol * window_size / np.finfo(float).eps)
     a_w = window_size / np.sqrt(2 * alpha - alpha**2)
-    c_i_sq = np.exp(4 * filter_order * np.sqrt(a_w**2 - eigvals**2) / a_w)
-    return np.abs(delta * np.exp(4 * filter_order) / (eigvals * c_i_sq))
-    
+    c_i_sq = np.exp(4 * filter_order * np.sqrt(a_w**2 - (eigvals - sigma)**2) / a_w)
+    eta = delta * np.exp(4 * filter_order) / (np.abs(eigvals) * c_i_sq)
+    return eta
