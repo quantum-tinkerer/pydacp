@@ -393,7 +393,7 @@ def eigh(
     random_vectors=2,
     return_eigenvectors=False,
     filter_order=12,
-    error_window=0.1,
+    tol=1e-4,
 ):
     """
     Find the eigendecomposition within the given spectral bounds of a given matrix.
@@ -428,12 +428,10 @@ def eigh(
         raise ValueError("expected square matrix (shape=%s)" % (matrix.shape,))
     if filter_order <= 0:
         raise ValueError("filter_order must be greater than 0.")
-    if eps < 0:
-        raise ValueError("eps must be greater than or equal to 0.")
     if random_vectors <= 0:
         raise ValueError("random_vectors must be greater than 0.")
-    if error_window < 0:
-        raise ValueError("error_window must be greater than or equal to 0.")
+
+    eps = 0.1
 
     if bounds is None:
         # Relative tolerance to which to calculate eigenvalues.  Because after
@@ -444,7 +442,7 @@ def eigh(
         lmax = float(eigsh(matrix, k=1, which="LA", return_eigenvectors=False, tol=tol))
         lmin = float(eigsh(matrix, k=1, which="SA", return_eigenvectors=False, tol=tol))
 
-        if lmax - lmin <= abs(lmax + lmin) * tol / 2:
+        if lmax - lmin <= abs(lmax + lmin) * eps / 4:
             raise ValueError(
                 "The matrix has a single eigenvalue, it is not possible to "
                 "obtain continue."
@@ -457,10 +455,6 @@ def eigh(
     if lmax < 0:
         raise ValueError("Upper bound of the spectrum must be positive.")
 
-    a = window_size * (1 + error_window)
-    if a > min(abs(lmin), abs(lmax)):
-        raise ValueError("a must be smaller than spectrum bounds.")
-
     ortho_threshold = 10 * np.sqrt(matrix.shape[0]) * np.exp(-2 * filter_order)
     if ortho_threshold < 10 * np.finfo(float).eps:
         warnings.warn("Results limited by numerical precision.")
@@ -468,6 +462,11 @@ def eigh(
     if ortho_threshold > 1e-6:
         warnings.warn("Filter order is too small. Fixing it to avoid errors.")
         filter_order = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0])))
+
+    alpha = 1 / (4 * filter_order) * np.log(tol * window_size / np.finfo(float).eps)
+    a = window_size / np.sqrt(2 * alpha - alpha**2)
+    if a > min(abs(lmin), abs(lmax)):
+        raise ValueError("a must be smaller than spectrum bounds.")
 
     Emin = bounds[0] * (1 + eps)
     Emax = bounds[1] * (1 + eps)
