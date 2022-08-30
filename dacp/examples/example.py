@@ -16,7 +16,7 @@ plt.rcParams["font.size"] = 18
 plt.rcParams["legend.fontsize"] = 18
 
 # +
-N = int(1e3)
+N = int(5e2)
 c = 2 * (np.random.rand(N-1) + np.random.rand(N-1)*1j - 0.5 * (1 + 1j))
 b = 2 * (np.random.rand(N) - 0.5)
 
@@ -24,20 +24,20 @@ H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
 # -
 
 # %%time
-true_vals=np.linalg.eigvalsh(H.todense())
+true_vals, true_vecs=np.linalg.eigh(H.todense())
 Emax = np.max(true_vals)
 true_vals /= Emax
 H /= Emax
 
 # %%time
-k=12
+k=16
 a = 0.1
-error_window = 0.
+error_window = 0.1
 evals = eigh(
     H,
     window_size=a,
     eps=0.05,
-    random_vectors=20,
+    random_vectors=10,
     return_eigenvectors=False,
     filter_order=k,
     error_window=error_window
@@ -58,14 +58,24 @@ plt.ylabel(r'$E_i$')
 plt.xlabel(r'$n$')
 plt.show()
 
+error = np.abs((true_vals - evals)/evals)
+true_vals=np.sort(true_vals)
+n=np.arange(-evals.shape[0]/2, evals.shape[0]/2)
+plt.scatter(n, evals, c=np.log10(error), s=20, cmap='RdBu_r')
+n_true=np.arange(-true_vals.shape[0]/2, true_vals.shape[0]/2)
+plt.colorbar()
+plt.scatter(n_true, true_vals, c='k', s=2)
+plt.ylabel(r'$E_i$')
+plt.xlabel(r'$n$')
+plt.show()
+
 plt.scatter(evals, np.abs(true_vals - evals))
 plt.ylabel(r'$\delta E_i$')
 plt.xlabel(r'$E_i$')
 plt.yscale('log')
 plt.axhline(np.finfo(float).eps, ls='--', c='k')
+plt.axhline(1/N, ls='--', c='k')
 plt.show()
-
-delta = (np.sqrt(N) * np.exp(-2 * k))**(1.4)
 
 delta = np.finfo(float).eps
 a_w = a * (1 + error_window)
@@ -95,12 +105,12 @@ H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
 H = kron(H, eye(4))
 
 # %%time
-evals, vecs = eigh(
+evals = eigh(
     H,
     window_size=a,
     eps=0.05,
     random_vectors=5,
-    return_eigenvectors=True,
+    return_eigenvectors=False,
     filter_order=k,
     error_window=error_window
 )
@@ -129,8 +139,6 @@ plt.xlabel(r'$E_i$')
 plt.yscale('log')
 plt.axhline(np.finfo(float).eps, ls='--', c='k')
 plt.show()
-
-delta = (np.sqrt(N) * np.exp(-2 * k))**(1.4)
 
 delta = np.finfo(float).eps
 a_w = a * (1 + error_window)
