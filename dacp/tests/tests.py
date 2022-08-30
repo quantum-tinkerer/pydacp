@@ -11,6 +11,9 @@ N_block = 100
 deg_n = 4
 loop_n = 30
 window_size = 0.1
+window=[-window_size, window_size]
+k=12
+tol=1e-4
 
 
 def random_ham(N):
@@ -27,12 +30,12 @@ def random_ham_deg(N, deg):
 
 
 # +
-def eigv_errors(H, window_size, **dacp_kwargs):
+def eigv_errors(H, window, **dacp_kwargs):
     eigv, eigs = np.linalg.eigh(H.todense())
     if dacp_kwargs:
-        eigv_dacp = eigh(H, window_size, **dacp_kwargs)
+        eigv_dacp = eigh(H, window, **dacp_kwargs)
     else:
-        eigv_dacp = eigh(H, window_size)
+        eigv_dacp = eigh(H, window)
 
     N_dacp = len(eigv_dacp)
 
@@ -47,13 +50,11 @@ def eigv_errors(H, window_size, **dacp_kwargs):
 
     relative_error = np.abs((eigv_dacp - map_eigv) / map_eigv)[map_eigv < window_size]
 
-    # Compute the theoretical error eta
     delta = np.finfo(float).eps
-    # 0.1 comes from error window
-    a_w = window_size * 1.1
-    # 12 comes from filter order
-    c_i_sq = np.exp(4 * 12 * np.sqrt(a_w**2 - (map_eigv[map_eigv < window_size])**2) / a_w)
-    eta = delta * np.exp(4 * 12) / (np.abs(map_eigv[map_eigv < window_size]) * c_i_sq)
+    alpha = 1 / (4 * k) * np.log(tol * window_size / np.finfo(float).eps)
+    a_w = window_size / np.sqrt(2 * alpha - alpha**2)
+    c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - (map_eigv[map_eigv < window_size])**2) / a_w)
+    eta = delta * np.exp(4 * k) / (np.abs(map_eigv[map_eigv < window_size]) * c_i_sq)
 
     diff = relative_error - eta
     return np.log10(np.heaviside(diff, 0) * diff / eta)
@@ -67,21 +68,21 @@ def eigv_errors_test(loop_n, deg=False, **dacp_kwargs):
             H = random_ham_deg(N_block, deg_n)
         else:
             H = random_ham(N)
-        relative_error = eigv_errors(H, window_size, **dacp_kwargs)
+        relative_error = eigv_errors(H, window, **dacp_kwargs)
         if relative_error.size != 0:
             relative_error_list.append(np.max(relative_error))
 
     return np.asarray(relative_error_list)
 
 
-def eigs_errors(H, window_size, **dacp_kwargs):
+def eigs_errors(H, window, **dacp_kwargs):
     eigv, eigs = np.linalg.eigh(H.todense())
     if dacp_kwargs:
         eigv_dacp, eigs_dacp = eigh(
-            H, window_size, return_eigenvectors=True, **dacp_kwargs
+            H, window, return_eigenvectors=True, **dacp_kwargs
         )
     else:
-        eigv_dacp, eigs_dacp = eigh(H, window_size, return_eigenvectors=True)
+        eigv_dacp, eigs_dacp = eigh(H, window, return_eigenvectors=True)
 
     map_eigv = []
     for value in eigv_dacp:
@@ -96,13 +97,11 @@ def eigs_errors(H, window_size, **dacp_kwargs):
 
     relative_error = np.abs((eigv_dacp - map_eigv) / map_eigv)[map_eigv < window_size]
 
-    # Compute the theoretical error eta
     delta = np.finfo(float).eps
-    # 0.1 comes from error window
-    a_w = window_size * 1.1
-    # 12 comes from filter order
-    c_i_sq = np.exp(4 * 12 * np.sqrt(a_w**2 - (map_eigv[map_eigv < window_size])**2) / a_w)
-    eta = delta * np.exp(4 * 12) / (np.abs(map_eigv[map_eigv < window_size]) * c_i_sq)
+    alpha = 1 / (4 * k) * np.log(tol * window_size / np.finfo(float).eps)
+    a_w = window_size / np.sqrt(2 * alpha - alpha**2)
+    c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - (map_eigv[map_eigv < window_size])**2) / a_w)
+    eta = delta * np.exp(4 * k) / (np.abs(map_eigv[map_eigv < window_size]) * c_i_sq)
 
     diff = relative_error - eta
     return np.log10(np.heaviside(diff, 0) * diff / eta)
@@ -117,7 +116,7 @@ def eigs_errors_test(loop_n, deg=False, **dacp_kwargs):
             H = random_ham_deg(N_block, deg_n)
         else:
             H = random_ham(N)
-        relative_error = eigs_errors(H, window_size, **dacp_kwargs)
+        relative_error = eigs_errors(H, window, **dacp_kwargs)
         if relative_error.size != 0:
             relative_error_list.append(np.max(relative_error))
 
