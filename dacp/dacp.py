@@ -3,6 +3,7 @@ from scipy.sparse import eye, csr_matrix
 import scipy.linalg
 import numpy as np
 import warnings
+import itertools as it
 
 import matplotlib.pyplot as plt
 
@@ -387,8 +388,7 @@ def eigvals_deg(
 
 def eigh(
     matrix,
-    window_size,
-    eps=0.1,
+    window,
     bounds=None,
     random_vectors=2,
     return_eigenvectors=False,
@@ -421,6 +421,8 @@ def eigh(
     error_window : float
         The fraction by which to expands the window size to account for errors.
     """
+    window_size = (window[1] - window[0]) / 2
+    sigma = (window[1] + window[0]) / 2
 
     if matrix.shape[0] != matrix.shape[1]:
         raise ValueError("expected square matrix (shape=%s)" % (matrix.shape,))
@@ -437,7 +439,7 @@ def eigh(
         # Relative tolerance to which to calculate eigenvalues.  Because after
         # rescaling we will add eps / 2 to the spectral bounds, we don't need
         # to know the bounds more accurately than eps / 2.
-        tol = eps / 2
+        tol = 0.05
 
         lmax = float(eigsh(matrix, k=1, which="LA", return_eigenvectors=False, tol=tol))
         lmin = float(eigsh(matrix, k=1, which="SA", return_eigenvectors=False, tol=tol))
