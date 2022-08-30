@@ -27,13 +27,13 @@ def svd_decomposition(S, matrix_proj):
     return U.T.conj() @ matrix_proj @ U
 
 
-def chebyshev_recursion_gen(matrix, v_0):
+def chebyshev_recursion_gen(A, v_0):
     """
     Recursively apply Chebyshev polynomials of a matrix.
 
     Parameters
     ----------
-    matrix : sparse matrix
+    A : sparse matrix
         Compute Chebyshev polynomials of this matrix.
     v_0 : 1D array
         Initial vector.
@@ -44,9 +44,9 @@ def chebyshev_recursion_gen(matrix, v_0):
             v_n = v_0
         elif order == 1:
             v_nm1 = v_n
-            v_n = matrix.dot(v_nm1)
+            v_n = A.dot(v_nm1)
         else:
-            v_np1 = 2 * matrix.dot(v_n) - v_nm1
+            v_np1 = 2 * A.dot(v_n) - v_nm1
             v_nm1 = v_n
             v_n = v_np1
         order += 1
@@ -221,7 +221,7 @@ def combine_loops_fast(S_diag, S_offdiag, S_prev):
     return S_combined
 
 
-def eigvals_init(v_proj, G_operator, matrix, dk, ortho_threshold):
+def eigvals_init(v_proj, G_operator, A, dk, ortho_threshold):
     """
     Compute eigenvalues for initial run.
 
@@ -229,7 +229,7 @@ def eigvals_init(v_proj, G_operator, matrix, dk, ortho_threshold):
         Filtered random vector.
     G_operator : ndarray
         Subspace generator.
-    matrix : ndarray
+    A : ndarray
         Matrix to compute eigenvalues.
     dk : integer
         Largest Chebyshev evolution order.
@@ -261,7 +261,7 @@ def eigvals_init(v_proj, G_operator, matrix, dk, ortho_threshold):
                     ],
                 )
             )
-            H_v_n = matrix @ v_n
+            H_v_n = A @ v_n
             matrix_xy.append(
                 np.einsum(
                     "sir,dil->srdl",
@@ -297,7 +297,7 @@ def eigvals_deg(
     S_prev,
     matrix_prev,
     G_operator,
-    matrix,
+    A,
     dk,
     n_evolution=True,
 ):
@@ -312,7 +312,7 @@ def eigvals_deg(
         List of indices from first run.
     G_operator : ndarray
         Subspace generator.
-    matrix : ndarray
+    A : ndarray
         Matrix to compute eigenvalues.
     dk : integer
         Largest Chebyshev evolution order.
@@ -342,7 +342,7 @@ def eigvals_deg(
                     ],
                 )
             )
-            H_v_n = matrix @ v_n
+            H_v_n = A @ v_n
             matrix_xy.append(
                 np.einsum(
                     "sir,dil->srdl",
@@ -387,7 +387,7 @@ def eigvals_deg(
 
 
 def eigh(
-    matrix,
+    A,
     window,
     bounds=None,
     random_vectors=2,
@@ -400,7 +400,7 @@ def eigh(
 
     Parameters
     ----------
-    matrix : 2D array or sparse matrix
+    A : 2D array or sparse matrix
         Real of complex Hermitian matrix to diagonalize.
     window_size : float
         Energy window around zero for which to solve the eigenproblem.
@@ -424,8 +424,8 @@ def eigh(
     window_size = (window[1] - window[0]) / 2
     sigma = (window[1] + window[0]) / 2
 
-    if matrix.shape[0] != matrix.shape[1]:
-        raise ValueError("expected square matrix (shape=%s)" % (matrix.shape,))
+    if A.shape[0] != A.shape[1]:
+        raise ValueError("expected square matrix (shape=%s)" % (A.shape,))
     if filter_order <= 0:
         raise ValueError("filter_order must be greater than 0.")
     if random_vectors <= 0:
@@ -439,8 +439,8 @@ def eigh(
         # to know the bounds more accurately than eps / 2.
         tol = 0.05
 
-        lmax = float(eigsh(matrix, k=1, which="LA", return_eigenvectors=False, tol=tol))
-        lmin = float(eigsh(matrix, k=1, which="SA", return_eigenvectors=False, tol=tol))
+        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=tol))
+        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=tol))
 
         if lmax - lmin <= abs(lmax + lmin) * eps / 4:
             raise ValueError(
@@ -455,13 +455,13 @@ def eigh(
     if lmax < 0:
         raise ValueError("Upper bound of the spectrum must be positive.")
 
-    ortho_threshold = 10 * np.sqrt(matrix.shape[0]) * np.exp(-2 * filter_order)
+    ortho_threshold = 10 * np.sqrt(A.shape[0]) * np.exp(-2 * filter_order)
     if ortho_threshold < 10 * np.finfo(float).eps:
         warnings.warn("Results limited by numerical precision.")
         ortho_threshold = 10 * np.finfo(float).eps
     if ortho_threshold > 1e-6:
         warnings.warn("Filter order is too small. Fixing it to avoid errors.")
-        filter_order = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(matrix.shape[0])))
+        filter_order = np.ceil(-0.5 * np.log(1e-7 / np.sqrt(A.shape[0])))
 
     alpha = 1 / (4 * filter_order) * np.log(tol * window_size / np.finfo(float).eps)
     a = window_size / np.sqrt(2 * alpha - alpha**2)
@@ -472,17 +472,17 @@ def eigh(
     Emax = bounds[1] * (1 + eps)
     E0 = (Emax - Emin) / 2
     Ec = (Emax + Emin) / 2
-    G_operator = (matrix - eye(matrix.shape[0]) * Ec) / E0
+    G_operator = (A - eye(A.shape[0]) * Ec) / E0
 
     Emax = np.max(np.abs(bounds)) * (1 + eps)
     E0 = (Emax**2 - a**2) / 2
     Ec = (Emax**2 + a**2) / 2
-    F_operator = (matrix @ matrix - eye(matrix.shape[0]) * Ec) / E0
+    F_operator = (A @ A - eye(A.shape[0]) * Ec) / E0
 
     def get_filtered_vector():
         v_rand = 2 * (
-            np.random.rand(matrix.shape[0], random_vectors)
-            + np.random.rand(matrix.shape[0], random_vectors) * 1j
+            np.random.rand(A.shape[0], random_vectors)
+            + np.random.rand(A.shape[0], random_vectors) * 1j
             - 0.5 * (1 + 1j)
         )
         v_rand = v_rand / np.linalg.norm(v_rand, axis=0)
@@ -524,7 +524,7 @@ def eigh(
                 first_run=False,
             )
 
-        matrix_proj = Q.conj().T @ matrix @ Q
+        matrix_proj = Q.conj().T @ A @ Q
         eigvals, eigvecs = scipy.linalg.eigh(matrix_proj)
         eigvecs = (Q @ eigvecs).T
         window_args = np.abs(eigvals) < window_size
@@ -537,7 +537,7 @@ def eigh(
             v_proj = get_filtered_vector()
             if N_loop == 0:
                 v_0, k_list, S, matrix_proj, q_S, r_S = eigvals_init(
-                    v_proj, G_operator, matrix, dk, ortho_threshold
+                    v_proj, G_operator, A, dk, ortho_threshold
                 )
                 norm = np.arange(1, len(np.diag(r_S)) + 1)
                 N_H_prev = sum(np.abs(np.diag(r_S) * norm) > ortho_threshold)
@@ -552,7 +552,7 @@ def eigh(
                     S,
                     matrix_proj,
                     G_operator,
-                    matrix,
+                    A,
                     dk,
                     n_evolution,
                 )
