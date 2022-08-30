@@ -30,17 +30,17 @@ true_vals /= Emax
 H /= Emax
 
 # %%time
-k=16
+k=12
 a = 0.1
+tol=1e-3
 error_window = 0.1
 evals = eigh(
     H,
-    window_size=a,
-    eps=0.05,
+    window=[-a,a],
     random_vectors=10,
     return_eigenvectors=False,
     filter_order=k,
-    error_window=error_window
+    tol=tol
 )
 
 map_eigv=[]
@@ -78,7 +78,8 @@ plt.axhline(1/N, ls='--', c='k')
 plt.show()
 
 delta = np.finfo(float).eps
-a_w = a * (1 + error_window)
+alpha = 1 / (4 * k) * np.log(tol * a / np.finfo(float).eps)
+a_w = a / np.sqrt(2 * alpha - alpha**2)
 Ei = np.linspace(-a_w, a_w, 300)
 c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - Ei**2) / a_w)
 eta = delta * np.exp(4 * k) / (np.abs(Ei) * c_i_sq)
