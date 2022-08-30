@@ -108,12 +108,11 @@ H = kron(H, eye(4))
 # %%time
 evals = eigh(
     H,
-    window_size=a,
-    eps=0.05,
+    window=[-a, a],
     random_vectors=5,
     return_eigenvectors=False,
     filter_order=k,
-    error_window=error_window
+    tol=tol
 )
 
 # %%time
@@ -140,12 +139,6 @@ plt.xlabel(r'$E_i$')
 plt.yscale('log')
 plt.axhline(np.finfo(float).eps, ls='--', c='k')
 plt.show()
-
-delta = np.finfo(float).eps
-a_w = a * (1 + error_window)
-Ei = np.linspace(-a_w, a_w, 300)
-c_i_sq = np.exp(4 * k * np.sqrt(a_w**2 - Ei**2) / a_w)
-eta = delta * np.exp(4 * k) / (np.abs(Ei) * c_i_sq)
 
 plt.plot(Ei, eta, 'r')
 plt.fill_between(Ei, 0.01*eta, 100*eta, alpha=0.4, fc='r')
