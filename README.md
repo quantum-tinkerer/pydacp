@@ -2,7 +2,9 @@
 
 A python package to compute eigenvalues using the dual applications of Chebyshev polynomials algorithm. The algorithm is described in [SciPost Phys. 11, 103 (2021)](https://scipost.org/SciPostPhys.11.6.103).
 
-This package implements an algorithm that computes the eigenvalues of hermitian linear opeators within a given window. Besides the original algorithm, we also provide a way to deal with degeneracies systematically, and remove the need of prior estimations of the number of eigenvalues.
+This package implements an algorithm that computes the eigenvalues of hermitian linear opeators within a given window. Besides the original algorithm, we also provide a way to deal with degeneracies systematically, and remove the need of prior estimations of the number of eigenvalues. The algorithm is useful for large, sufficiently sparse matrices.
+
+This is an experimental version, so use at your own risk.
 
 ## Content
 
