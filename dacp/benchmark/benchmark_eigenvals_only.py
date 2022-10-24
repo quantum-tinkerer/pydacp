@@ -17,42 +17,45 @@ calculation = 'eigvals_only'
 # +
 t = 1
 
-def make_syst(N=100, dimension=2):
-    mu=2*dimension-1
 
-    if dimension==2:
-        L=np.sqrt(N)
+def make_syst(N=100, dimension=2):
+
+    if dimension == 2:
+        L = np.sqrt(N)
         lat = kwant.lattice.square(a=1, norbs=1)
         # Define 2D shape
         def shape(pos):
             (x, y) = pos
             return (-L < x < L) and (-L < y < L)
-    elif dimension==3:
-        L=np.cbrt(N)
+
+    elif dimension == 3:
+        L = np.cbrt(N)
         lat = kwant.lattice.cubic(a=1, norbs=1)
         # Define 3D shape
         def shape(pos):
             (x, y, z) = pos
-            return (-L < x < L) and (-L < y < L)  and (-L < z < L)
-    elif dimension==1:
-        L=N
+            return (-L < x < L) and (-L < y < L) and (-L < z < L)
+
+    elif dimension == 1:
+        L = N
         lat = kwant.lattice.chain(a=1, norbs=1)
         # Define 1D shape
         def shape(pos):
             x = pos[0]
-            return (-L < x < L)
+            return -L < x < L
 
     syst = kwant.Builder()
 
     def onsite(site, seed):
         delta_mu = kwant.digest.uniform(repr(site.pos) + str(seed)) - 0.5
-        return delta_mu - mu
+        # we multiply it by 20 to ensure the spectrum is uniformly distributed
+        return 20 * delta_mu
 
-    if dimension==2:
+    if dimension == 2:
         syst[lat.shape(shape, (0, 0))] = onsite
-    elif dimension==3:
+    elif dimension == 3:
         syst[lat.shape(shape, (0, 0, 0))] = onsite
-    elif dimension==1:
+    elif dimension == 1:
         syst[lat.shape(shape, (0,))] = onsite
     syst[lat.neighbors()] = -t
 
@@ -269,22 +272,3 @@ plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
 plt.tight_layout()
 plt.savefig('mem_3d_' + calculation + '.png')
 plt.show()
-
-
-
-
-
-
-
-N=1000
-dimension=3
-seed=1
-syst = make_syst(N=N, dimension=dimension)
-H = syst.hamiltonian_submatrix(params=dict(seed=seed), sparse=True)
-lmax = float(sla.eigsh(H, k=1, which="LA", return_eigenvectors=False))
-lmin = float(sla.eigsh(H, k=1, which="SA", return_eigenvectors=False))
-print(lmin, lmax)
-
-
-
-
