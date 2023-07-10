@@ -382,7 +382,7 @@ def eigvals_deg(
                 return v_0, S, matrix_proj
         k_latest += 1
 
-def eigvalsh(
+def eigvalsh_single_run(
     A,
     window,
     bounds=None,
@@ -546,6 +546,39 @@ def eigvalsh(
                 window_args = np.abs(eigvals) < window_size
                 return eigvals[window_args] + sigma
         N_loop += 1
+
+def eigvalsh(
+    A,
+    window,
+    bounds=None,
+    random_vectors=2,
+    filter_order=12,
+    tol=1e-4,
+):
+    vals_1 = eigvalsh_single_run(
+        A,
+        window,
+        bounds=None,
+        random_vectors=2,
+        filter_order=12,
+        tol=1e-4,
+    )
+    if vals_1.any():
+        errors = estimated_errors(eigvals=vals_1, window=window, tol=tol, filter_order=filter_order)
+        vals_2 = eigvalsh_single_run(
+            A,
+            window,
+            bounds=None,
+            random_vectors=2,
+            filter_order=12,
+            tol=1e-4,
+        )
+        dist = np.abs(vals_1[:, None] - vals_2[None, :])
+        indx = np.min(dist, axis=1) < errors
+        return vals_1[indx]
+    else:
+        return []
+    
 
 def eigh(
     A,
