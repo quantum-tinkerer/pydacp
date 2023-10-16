@@ -12,7 +12,7 @@ from tqdm import tqdm
 import itertools as it
 import xarray as xr
 
-calculation = 'eigvals_only'
+calculation = 'eigvals_only_2d'
 
 # +
 t = 1
@@ -102,14 +102,10 @@ def benchmark(N, seed, dimension):
     print(a)
 
     def dacp_benchmark():
-        eigs = dacp.dacp.eigh(
-            H,
-            window_size=a,
-            eps=0.05,
-            return_eigenvectors=False,
-            filter_order=15,
-            error_window=0.0,
-            random_vectors=5,
+        eigs = dacp.dacp.eigvalsh(
+            A=H,
+            window=(-a, a),
+            random_vectors=10,
         )
         return len(eigs)
 
@@ -144,7 +140,7 @@ def benchmark(N, seed, dimension):
 params = {
     'N' : [10**i for i in np.linspace(3, 4.5, 5, endpoint=True)],
     'seeds' : [1, 2, 3],
-    'dimensions' : [2, 3]
+    'dimensions' : [2]
 }
 
 values = list(params.values())
@@ -173,7 +169,9 @@ da = xr.DataArray(
     }
 )
 
-da.to_netcdf('./benchmark_data/data_benchmark_' + calculation + '.nc')
+da.to_netcdf('./data/data_benchmark_' + calculation + '.nc')
+
+da = xr.open_dataarray('./data/data_benchmark_' + calculation + '.nc')
 
 da_mean=da.mean(dim='seeds')
 
@@ -186,89 +184,92 @@ plt.rcParams['font.size'] = 15
 plt.rcParams['legend.fontsize'] = 15
 
 from scipy.stats import linregress
+from scipy.optimize import curve_fit
 
 
 def slope(dim, output):
-    print(
-        linregress(
-            np.log(da_mean.N.values),
-            np.log(da_mean.sel(output=output, dimensions=dim).values)
-        )[0]
-    )
+    return linregress(
+        np.log10(da_mean.N.values),
+        np.log10(da_mean.sel(output=output, dimensions=dim).values)
+    )[0:2]
 
 
-slope(dim=1, output='dacptime')
-slope(dim=1, output='sparsetime')
+# +
+def power_law(x, a, b):
+    return a*x**b
 
-slope(dim=2, output='dacptime')
-slope(dim=2, output='sparsetime')
+def power_fit(dim, output):
+    return curve_fit(
+        power_law,
+        da_mean.N.values,
+        da_mean.sel(output=output, dimensions=dim).values
+    )[0]
 
-slope(dim=3, output='dacptime')
-slope(dim=3, output='sparsetime')
 
-slope(dim=1, output='dacpmem')
-slope(dim=1, output='sparsemem')
+# -
 
-slope(dim=2, output='dacpmem')
-slope(dim=2, output='sparsemem')
+time_dacp_fit = slope(dim=2, output='dacptime')
+time_sparse_fit = slope(dim=2, output='sparsetime')
+print(time_dacp_fit, time_sparse_fit)
 
-slope(dim=3, output='dacpmem')
-slope(dim=3, output='sparsemem')
+time_dacp_fit = power_fit(dim=2, output='dacptime')
+time_sparse_fit = power_fit(dim=2, output='sparsetime')
+print(time_dacp_fit, time_sparse_fit)
+
+mem_dacp_fit_0 = slope(dim=2, output='dacpmem')
+mem_sparse_fit_0 = slope(dim=2, output='sparsemem')
+print(mem_dacp_fit_0, mem_sparse_fit_0)
+
+mem_dacp_fit = power_fit(dim=2, output='dacpmem')
+mem_sparse_fit = power_fit(dim=2, output='sparsemem')
+print(mem_dacp_fit, mem_sparse_fit)
 
 from sys import getsizeof
 
 getsizeof(np.random.rand(int(1e6)) + 1j * np.random.rand(int(1e6))) / 1e6 * 1000
-
-(da_mean.sel(dimensions=1).sel(output=['dacptime', 'sparsetime'])/3600).plot(hue='output', marker='o')
-plt.xscale('log')
-plt.yscale('log')
-plt.ylabel(r'$\mathrm{Time\ [hours]}$')
-plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
-plt.tight_layout()
-plt.savefig('time_1d_' + calculation + '.png')
-plt.show()
-
-(da_mean.sel(dimensions=1).sel(output=['dacpmem', 'sparsemem'])/1000).plot(hue='output', marker='o')
-plt.xscale('log')
-plt.yscale('log')
-plt.ylabel(r'$\mathrm{Memory\ [GB]}$')
-plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
-plt.tight_layout()
-plt.savefig('mem_1d_' + calculation + '.png')
-plt.show()
 
 (da_mean.sel(dimensions=2).sel(output=['dacptime', 'sparsetime'])/3600).plot(hue='output', marker='o')
 plt.xscale('log')
 plt.yscale('log')
 plt.ylabel(r'$\mathrm{Time\ [hours]}$')
 plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
+plt.yticks([1e-3, 1e-2, 1e-1, 1])
 plt.tight_layout()
 plt.savefig('time_2d_' + calculation + '.png')
 plt.show()
 
+
+def power_from_slope(x, a, b):
+    return 10**b * x ** a
+
+
 (da_mean.sel(dimensions=2).sel(output=['dacpmem', 'sparsemem'])/1000).plot(hue='output', marker='o')
+plt.plot(np.array(params['N']), power_law(np.array(params['N']), *mem_dacp_fit)/1000)
+plt.plot(np.array(params['N']), power_law(np.array(params['N']), *mem_sparse_fit)/1000)
+# plt.plot(np.array(params['N']), power_from_slope(np.array(params['N']), *mem_sparse_fit)/1000)
+# plt.plot(np.array(params['N']), power_from_slope(np.array(params['N']), *mem_dacp_fit)/1000)
 plt.xscale('log')
 plt.yscale('log')
 plt.ylabel(r'$\mathrm{Memory\ [GB]}$')
 plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
+# plt.yticks([0.1, 1, 10])
 plt.tight_layout()
 plt.savefig('mem_2d_' + calculation + '.png')
 plt.show()
 
-(da_mean.sel(dimensions=3).sel(output=['dacptime', 'sparsetime'])/3600).plot(hue='output', marker='o')
-plt.xscale('log')
-plt.yscale('log')
-plt.ylabel(r'$\mathrm{Time\ [hours]}$')
-plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
-plt.tight_layout()
-plt.savefig('time_3d_' + calculation + '.png')
-plt.show()
+(da_mean.sel(dimensions=2).sel(output=['dacpmem'])/1000).data
 
-(da_mean.sel(dimensions=3).sel(output=['dacpmem', 'sparsemem'])/1000).plot(hue='output', marker='o')
+params['N']
+
+mem_sparse_fit/1000
+
+# plt.plot(np.array(params['N']), power_law(np.array(params['N']), *mem_dacp_fit)/1000)
+plt.plot(np.array(params['N']), power_law(np.array(params['N']), *mem_sparse_fit)/1000)
 plt.xscale('log')
 plt.yscale('log')
-plt.ylabel(r'$\mathrm{Memory\ [GB]}$')
-plt.xlabel(r'$\mathrm{Number\ of\ sites}$')
-plt.tight_layout()
-plt.savefig('mem_3d_' + calculation + '.png')
-plt.show()
+
+np.array(params['N'])
+
+0.7*10**1.3
+
+

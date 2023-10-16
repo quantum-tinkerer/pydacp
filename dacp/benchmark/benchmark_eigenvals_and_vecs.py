@@ -45,7 +45,7 @@ def make_syst(N=100, dimension=2):
 
     def onsite(site, seed):
         delta_mu = kwant.digest.uniform(repr(site.pos) + str(seed)) - 0.5
-        return delta_mu - 2
+        return 20 * delta_mu
 
     if dimension==2:
         syst[lat.shape(shape, (0, 0))] = onsite
