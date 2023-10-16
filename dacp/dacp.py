@@ -543,8 +543,7 @@ def eigvalsh_single_run(
                 S = S - diagS + diagS.real
                 H_red = svd_decomposition(S, matrix_proj)
                 eigvals = scipy.linalg.eigvalsh(H_red)
-                window_args = np.abs(eigvals) < window_size
-                return eigvals[window_args] + sigma
+                return eigvals[np.abs(eigvals) <= window_size] + sigma
         N_loop += 1
 
 def eigvalsh(
