@@ -639,10 +639,10 @@ def eigvalsh(
     vals_1 = eigvalsh_single_run(
         A,
         window,
-        bounds=None,
-        random_vectors=2,
-        filter_order=12,
-        tol=1e-4,
+        bounds=bounds,
+        random_vectors=random_vectors,
+        filter_order=filter_order,
+        tol=tol,
     )
     if vals_1.any():
         errors = estimated_errors(
@@ -651,10 +651,10 @@ def eigvalsh(
         vals_2 = eigvalsh_single_run(
             A,
             window,
-            bounds=None,
-            random_vectors=2,
-            filter_order=12,
-            tol=1e-4,
+            bounds=bounds,
+            random_vectors=random_vectors,
+            filter_order=filter_order,
+            tol=tol,
         )
         dist = np.abs(vals_1[:, None] - vals_2[None, :])
         indx = np.min(dist, axis=1) < errors
