@@ -107,17 +107,17 @@ Instead, we perform QR decomposition of the overlap matrix, and similarly to the
 
 * Eigenvalues-only
 ```python
-from dacp.dacp import eigh
+from dacp.dacp import eigvalsh, eigh
 # Generate a random matrix with size 100 x 100
 N = 100
 matrix = random_values((N,N)) + random_values((N,N))*1j
 matrix = (matrix.conj().T + matrix)/(2*np.sqrt(N))
 matrix = csr_matrix(matrix)
 # Compute eigenvalues
-eigvals = eigh(matrix, window_size)
+eigvals = eigvalsh(matrix, window_size)
 ```
 
 * Eigenvalues and eigenvectors
 ```python
-eigvals, eigvecs = eigh(matrix, window_size, return_eigenvectors=True)
+eigvals, eigvecs = eigh(matrix, window_size)
 ```
