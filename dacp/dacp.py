@@ -17,6 +17,10 @@ def svd_decomposition(S, matrix_proj):
         Overlap matrix.
     matrix_proj : ndarray
         Projected matrix.
+
+    Returns:
+    --------
+    Orthogonalized matrix.
     """
     s, V = scipy.linalg.eigh(S)
     indx = s > 1e-12
@@ -33,8 +37,13 @@ def chebyshev_recursion_gen(A, v_0):
     ----------
     A : sparse matrix
         Compute Chebyshev polynomials of this matrix.
-    v_0 : 1D array
+    v_0 : 2D array
         Initial vector.
+
+    Returns:
+    --------
+    T_n(A) @ v_0: nd-array
+        n-th order Chebyshev polynomial applied to v_0.
     """
     order = 0
     while True:
@@ -57,12 +66,17 @@ def low_E_filter(v_rand, F_operator, K_max):
 
     Parameters
     ----------
-    vproj : 2D array
+    vproj : 2d-array
         Collection of random vectors.
     F_operator : sparse matrix
         Filter operator.
     K_max : int
         Highest order of Chebyshev polynomials of `F_operator` computed.
+
+    Returns:
+    --------
+    F(v_rand): 2D array
+        Collection of filtered vectors.
     """
     chebyshev_recursion = chebyshev_recursion_gen(F_operator, v_rand)
     for i in range(K_max + 1):
@@ -90,6 +104,13 @@ def basis(v_proj, G_operator, dk, ortho_threshold, first_run=True, Q=None, R=Non
         Q matrix from previous QR decomposition. Only necessary if `first_run=False`.
     R : 2D array
         R matrix from previous QR decomposition. Only necessary if `first_run=False`.
+
+    Returns:
+    --------
+    Q : 2D array
+        Orthogonalized vectors.
+    R: 2D array
+        R-matrix resulting from QR decomposition.
     """
     chebyshev_recursion = chebyshev_recursion_gen(G_operator, v_proj)
     count = 0
@@ -153,6 +174,11 @@ def construct_matrix(k_list_i, k_list_j, storage_list, S_xy):
         List of indices.
     S_xy : list
         List of S_xy elements.
+
+    Returns:
+    --------
+    S : nd-array
+        Overlap matrix.
     """
     shape_S_xy = S_xy[0].shape
     k_products = np.array(list(it.product(k_list_i, k_list_j)))
@@ -183,7 +209,12 @@ def combine_loops(S_new, S_prev):
     S_new : ndarray
         New array with elements.
     S_prev : ndarray
-        Previous array with elements.
+        Previous array with elements..
+
+    Returns:
+    --------
+    S_combined : nd-array
+        Overlap matrix combined from different loops.
     """
     S_conj = np.transpose(S_new[:-1, :, :, :, :, :].conj(), axes=[3, 4, 5, 0, 1, 2])
     n_conj, m_conj = np.prod(S_conj.shape[:3]), np.prod(S_conj.shape[3:])
@@ -205,6 +236,11 @@ def combine_loops_fast(S_diag, S_offdiag, S_prev):
         Off-diagonal block of the new matrix.
     S_prev : ndarray
         Previous matrix block.
+
+    Returns:
+    --------
+    S_combined : nd-array
+        Overlap matrix combined from different loops.
     """
     n_diag, m_diag = np.prod(S_diag.shape[:3]), np.prod(S_diag.shape[3:])
     S_diag = S_diag.reshape((n_diag, m_diag))
@@ -233,6 +269,19 @@ def eigvals_init(v_proj, G_operator, A, dk, ortho_threshold):
         Largest Chebyshev evolution order.
     ortho_threshold : float
         Threshold for orthogonality condition.
+
+    Returns:
+    --------
+    v_0 : nd-array
+        Filtered vector.
+    k_list : list
+        List of indices to be collected for
+    S : nd-array
+        Overlap matrix.
+    matrix_proj : nd-array
+        Projected matrix for computed vectors.
+    q_S, r_S : nd-arrays
+        Q and R matrices from QR decomposition of the overlap matrix.
     """
     S_xy = []
     matrix_xy = []
@@ -242,9 +291,7 @@ def eigvals_init(v_proj, G_operator, A, dk, ortho_threshold):
     k_list = [0, dk - 1, dk]
     k_latest = 0
     eig_pairs = 1
-    v_0 = v_proj[
-        np.newaxis,
-    ]
+    v_0 = v_proj[np.newaxis,]
     while True:
         v_n = next(chebyshev_recursion)
         if k_latest == storage_list[-1]:
@@ -253,9 +300,7 @@ def eigvals_init(v_proj, G_operator, A, dk, ortho_threshold):
                 np.einsum(
                     "sir,dil->srdl",
                     v_0.conj(),
-                    v_n[
-                        np.newaxis,
-                    ],
+                    v_n[np.newaxis,],
                 )
             )
             H_v_n = A @ v_n
@@ -263,9 +308,7 @@ def eigvals_init(v_proj, G_operator, A, dk, ortho_threshold):
                 np.einsum(
                     "sir,dil->srdl",
                     v_0.conj(),
-                    H_v_n[
-                        np.newaxis,
-                    ],
+                    H_v_n[np.newaxis,],
                 )
             )
 
@@ -314,6 +357,15 @@ def eigvals_deg(
     dk : integer
         Largest Chebyshev evolution order.
     n_evolution : bool
+
+    Returns:
+    --------
+    v_0 : nd-array
+        Filtered vector.
+    S : nd-array
+        Overlap matrix.
+    matrix_proj : nd-array
+        Projected matrix for computed vectors.
     """
     S_xy = []
     matrix_xy = []
@@ -322,9 +374,7 @@ def eigvals_deg(
     storage_list = [next(index_generator)]
     k_latest = 0
 
-    v_0 = v_proj[
-        np.newaxis,
-    ]
+    v_0 = v_proj[np.newaxis,]
     v_0 = np.concatenate((v_prev, v_0))
     while True:
         v_n = next(chebyshev_recursion)
@@ -334,9 +384,7 @@ def eigvals_deg(
                 np.einsum(
                     "sir,dil->srdl",
                     v_0.conj(),
-                    v_n[
-                        np.newaxis,
-                    ],
+                    v_n[np.newaxis,],
                 )
             )
             H_v_n = A @ v_n
@@ -344,9 +392,7 @@ def eigvals_deg(
                 np.einsum(
                     "sir,dil->srdl",
                     v_0.conj(),
-                    H_v_n[
-                        np.newaxis,
-                    ],
+                    H_v_n[np.newaxis,],
                 )
             )
         if not n_evolution:
@@ -382,6 +428,7 @@ def eigvals_deg(
                 return v_0, S, matrix_proj
         k_latest += 1
 
+
 def eigvalsh_single_run(
     A,
     window,
@@ -409,6 +456,11 @@ def eigvalsh_single_run(
         The number of times a vector is filtered is given by filter_order*E_max/a.
     tol : float
         Maximum relative error tolerance for eigenvalues.
+
+    Returns:
+    --------
+    eigvals : 1D-array
+        Eigenvalues.
     """
     window_size = (window[1] - window[0]) / 2
     sigma = (window[1] + window[0]) / 2
@@ -427,11 +479,15 @@ def eigvalsh_single_run(
     elif scipy.sparse.issparse(A):
         eye = scipy.sparse.eye(A.shape[0])
     elif isinstance(A, scipy.sparse.linalg._interface._CustomLinearOperator):
+
         def mv(v):
             return v
+
         eye = LinearOperator((A.shape[0], A.shape[0]), matvec=mv)
     else:
-        raise TypeError("A is wrong dtype: needs to be ndarray, sparse matrix or LinearOperator")
+        raise TypeError(
+            "A is wrong dtype: needs to be ndarray, sparse matrix or LinearOperator"
+        )
 
     A = A - eye * sigma
 
@@ -440,8 +496,8 @@ def eigvalsh_single_run(
         # rescaling we will add eps / 2 to the spectral bounds, we don't need
         # to know the bounds more accurately than eps / 2.
 
-        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=eps/2))
-        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=eps/2))
+        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=eps / 2))
+        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=eps / 2))
 
         if lmax - lmin <= abs(lmax + lmin) * eps / 4:
             raise ValueError(
@@ -473,12 +529,12 @@ def eigvalsh_single_run(
     Emax = bounds[1] * (1 + eps)
     E0 = (Emax - Emin) / 2
     Ec = (Emax + Emin) / 2
-    G_operator = (A - eye * Ec)*(1 / E0)
+    G_operator = (A - eye * Ec) * (1 / E0)
 
     Emax = np.max(np.abs(bounds)) * (1 + eps)
     E0 = (Emax**2 - a**2) / 2
     Ec = (Emax**2 + a**2) / 2
-    F_operator = (A @ A - eye * Ec) * (1/E0)
+    F_operator = (A @ A - eye * Ec) * (1 / E0)
 
     def get_filtered_vector():
         v_rand = 2 * (
@@ -546,6 +602,7 @@ def eigvalsh_single_run(
                 return eigvals[np.abs(eigvals) <= window_size] + sigma
         N_loop += 1
 
+
 def eigvalsh(
     A,
     window,
@@ -554,6 +611,31 @@ def eigvalsh(
     filter_order=12,
     tol=1e-4,
 ):
+    """
+    Computes eigenvalues twice to remove wrong values.
+
+    Parameters
+    ----------
+    A : ndarray, sparse matrix or LinearOperator
+        Hermitian operator.
+    window : tuple
+        Eigenvalue window.
+    bounds : tuple, or None
+        Boundaries of the spectrum. If not provided the maximum and
+        minimum eigenvalues are calculated.
+    random_vectors : int
+        When return_eigenvectors=False, specifies the maximum expected
+        degeneracy of the matrix.
+    filter_order : int
+        The number of times a vector is filtered is given by filter_order*E_max/a.
+    tol : float
+        Maximum relative error tolerance for eigenvalues.
+
+    Returns:
+    --------
+    eigvals : 1D-array
+        Eigenvalues.
+    """
     vals_1 = eigvalsh_single_run(
         A,
         window,
@@ -563,7 +645,9 @@ def eigvalsh(
         tol=1e-4,
     )
     if vals_1.any():
-        errors = estimated_errors(eigvals=vals_1, window=window, tol=tol, filter_order=filter_order)
+        errors = estimated_errors(
+            eigvals=vals_1, window=window, tol=tol, filter_order=filter_order
+        )
         vals_2 = eigvalsh_single_run(
             A,
             window,
@@ -577,7 +661,7 @@ def eigvalsh(
         return vals_1[indx]
     else:
         return []
-    
+
 
 def eigh(
     A,
@@ -606,6 +690,13 @@ def eigh(
         The number of times a vector is filtered is given by filter_order*E_max/a.
     tol : float
         Maximum relative error tolerance for eigenvalues.
+
+    Returns:
+    --------
+    eigvals : 1D array
+        Eigenvalues.
+    eigvecs : 2D array
+        Eigenvectors.
     """
     window_size = (window[1] - window[0]) / 2
     sigma = (window[1] + window[0]) / 2
@@ -624,11 +715,15 @@ def eigh(
     elif scipy.sparse.issparse(A):
         eye = scipy.sparse.eye(A.shape[0])
     elif isinstance(A, scipy.sparse.linalg._interface._CustomLinearOperator):
+
         def mv(v):
             return v
+
         eye = LinearOperator((A.shape[0], A.shape[0]), matvec=mv)
     else:
-        raise TypeError("A is wrong dtype: needs to be ndarray, sparse matrix or LinearOperator")
+        raise TypeError(
+            "A is wrong dtype: needs to be ndarray, sparse matrix or LinearOperator"
+        )
 
     A = A - eye * sigma
 
@@ -637,8 +732,8 @@ def eigh(
         # rescaling we will add eps / 2 to the spectral bounds, we don't need
         # to know the bounds more accurately than eps / 2.
 
-        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=eps/2))
-        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=eps/2))
+        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=eps / 2))
+        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=eps / 2))
 
         if lmax - lmin <= abs(lmax + lmin) * eps / 4:
             raise ValueError(
@@ -670,12 +765,12 @@ def eigh(
     Emax = bounds[1] * (1 + eps)
     E0 = (Emax - Emin) / 2
     Ec = (Emax + Emin) / 2
-    G_operator = (A - eye * Ec)*(1 / E0)
+    G_operator = (A - eye * Ec) * (1 / E0)
 
     Emax = np.max(np.abs(bounds)) * (1 + eps)
     E0 = (Emax**2 - a**2) / 2
     Ec = (Emax**2 + a**2) / 2
-    F_operator = (A @ A - eye * Ec) * (1/E0)
+    F_operator = (A @ A - eye * Ec) * (1 / E0)
 
     def get_filtered_vector():
         v_rand = 2 * (
@@ -727,12 +822,27 @@ def eigh(
     window_args = np.abs(eigvals) < window_size
     return eigvals[window_args] + sigma, eigvecs[window_args, :]
 
+
 def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
+    """
+    Computes estimated of eigenvalues.
+
+    Paramters:
+    ---------
+    eigvals : 1D-array
+        Eigenvalues found by the eigensolver.
+    window : tuple
+        Upper and lower bounds of eigenvalues.
+    tol : float
+        Tolerance of the eigensolver (default 1e-4).
+    filter_order : int
+        Order of the Chebyshev filter (default 12).
+    """
     window_size = (window[1] - window[0]) / 2
     sigma = (window[1] + window[0]) / 2
     delta = np.finfo(float).eps
     alpha = 1 / (4 * filter_order) * np.log(tol * window_size / np.finfo(float).eps)
     a_w = window_size / np.sqrt(2 * alpha - alpha**2)
-    c_i_sq = np.exp(4 * filter_order * np.sqrt(a_w**2 - (eigvals - sigma)**2) / a_w)
+    c_i_sq = np.exp(4 * filter_order * np.sqrt(a_w**2 - (eigvals - sigma) ** 2) / a_w)
     eta = delta * np.exp(4 * filter_order) / (np.abs(eigvals) * c_i_sq)
     return eta
