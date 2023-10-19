@@ -602,7 +602,6 @@ def eigvalsh_single_run(
                 return eigvals[np.abs(eigvals) <= window_size] + sigma
         N_loop += 1
 
-
 def eigvalsh(
     A,
     window,
@@ -821,7 +820,6 @@ def eigh(
     eigvecs = (Q @ eigvecs).T
     window_args = np.abs(eigvals) < window_size
     return eigvals[window_args] + sigma, eigvecs[window_args, :]
-
 
 def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
     """
