@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyDACP"
+dynamic = ["version"]
+authors = [
+  {name="pyDACP developers"},
+]
+description = "Package to compute eigenvalues using the dual applications of Chebyshev polynomials algorithm"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: BSD License",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.8",
+    # "python-mumps>=0.0.1,<0.1", # add it as optional later
+    "packaging>=22.0",  # For version parsing
+]
+[tool.hatch.version]
+source = "vcs"
+[tool.hatch.build.hooks.vcs]
+version-file = "dacp/_version.py"
+
+[project.urls]
+"Documentation" = "https://pydacp.readthedocs.io/en/latest/"
+"Repository" = "https://gitlab.kwant-project.org/qt/pyDACP"
+"Bug Tracker" = "https://gitlab.kwant-project.org/qt/pyDACP/-/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyDACP"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "dacp",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+  "AUTHORS.md",
+]
