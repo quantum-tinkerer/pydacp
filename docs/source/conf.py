@@ -24,8 +24,8 @@ sys.path.insert(0, package_path)
 # -- Project information -----------------------------------------------------
 
 project = "pyDACP"
-copyright = "2023, Pymablock developers"
-author = "Pymablock developers"
+copyright = "2024, pyDACP developers"
+author = "pyDACP developers"
 gitlab_url = "https://gitlab.kwant-project.org/qt/pyDACP"
 
 # The full version, including alpha/beta/rc tags
