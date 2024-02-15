@@ -1,0 +1,21 @@
+name: pydacp-docs
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - myst-nb
+  - numpy
+  - scipy
+  - matplotlib-base
+  - sphinx-togglebutton
+  - sphinx-copybutton
+  - pip
+  - git
+  - make
+  - pip:
+    - sphinx-book-theme>=1.1.0
+    - sphinx-tippy
+    - ..
+
