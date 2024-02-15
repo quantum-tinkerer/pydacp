@@ -1,5 +1,4 @@
 from scipy.sparse.linalg import eigsh
-from scipy.sparse import eye, csr_matrix
 import scipy.linalg
 import numpy as np
 import warnings
