@@ -1,4 +1,4 @@
-from scipy.sparse.linalg import eigsh
+from scipy.sparse.linalg import eigsh, LinearOperator
 import scipy.linalg
 import numpy as np
 import warnings
