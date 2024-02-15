@@ -3,11 +3,10 @@ import kwant.linalg.mumps as mumps
 import dacp
 import time
 import scipy.sparse.linalg as sla
-from scipy.sparse import identity, diags
+from scipy.sparse import identity
 import numpy as np
 import matplotlib.pyplot as plt
 from memory_profiler import memory_usage
-from itertools import product
 from tqdm import tqdm
 import itertools as it
 import xarray as xr
