@@ -96,10 +96,6 @@ html_theme_options = {
     "repository_branch": "main",
     "use_download_button": True,
     "home_page_in_toc": True,
-    "logo": {
-        "image_light": "_static/logo.svg",
-        "image_dark": "_static/logo_dark.svg",
-    },
     "extra_footer": (
         '<hr><div id="matomo-opt-out"></div>'
         '<script src="https://piwik.kwant-project.org/index.php?'
