@@ -81,31 +81,33 @@ H_{\text{eff}}^{ij} = \langle \psi_i |\mathcal{H}|\psi_j\rangle.
 ### Dealing with degeneracies
 
 The method above is not able to resolve degeneracies: each random vector can only span a non-degenerate subspace of $`\mathcal{L}`$.
-Therefore, we solve the problem by adding more random vectors.
-The library has two different implementations to solve degeneracies, which defines the methods that return or not the eigenvectors.
+We solve the problem by adding more random vectors.
 
-#### Eigenvalues + eigenvectors method (under development)
-
-To make sure a complete basis is generated, after the end of each Chebolution&trade run finishes, we diagonalize the set of eigenvectors by performing QR-decomposition of $`[\psi_k]`$:
+To make sure a complete basis is generated, after the end of each Chebolution&trade run finishes, we perform a QR decomposition of the overlap matrix $`S`$:
 ```math
-[\psi_k] = QR
+S = QR~.
 ```
-and take $`Q`$ as the new basis.
-When adding new random vectors no longer increase the subspace dimension, the projected matrix
+When adding new random vectors no longer increase number of non-zero elements in $`\mathrm{diag} R`$, we stop the calculation.
+
+#### How do we save memory?
+
+DACP provides an algorithm to directly compute the projected and overlap matrices without storing all vectors.
+This is possible because of two properties combined:
+1. $`[T_i(\mathcal{H}), \mathcal{H}]=0`$
+2. $`T_i(\mathcal{H})T_j(\mathcal{H}) = \frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right)~.`$
+
+Combining those two properties, we only need to store the fitered vectors from previous runs $`|r_E^{pref}\rangle`$ and compute:
 ```math
-H_{\text{eff}}^{ij} = \langle \psi_i |\mathcal{H}|\psi_j\rangle.
+S_{ij} = \left r_E^{prev}| \left[\frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right) |r_E^{current}\rangle\right]~.
 ```
-is computed.
+and
+```math
+H_{ij} = \left r_E^{prev}| \mathcal{H} \left[\frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right) |r_E^{current}\rangle\right]~.
+```
 
-#### Eigenvalues-only method
-
-A second option for the DACP algorithm is to directly compute the projected and overlap matrices without storing all vectors.
-However, when dealing with degeneracies, it means that we no longer orthogonalize the set $`\{\psi_k\}`$.
-Instead, we perform QR decomposition of the overlap matrix, and similarly to the previous case, we stop when the subspace dimension stops increasing.
 
 ## Usage example
 
-* Eigenvalues-only
 ```python
 from dacp.dacp import eigvalsh, eigh
 # Generate a random matrix with size 100 x 100
@@ -115,9 +117,4 @@ matrix = (matrix.conj().T + matrix)/(2*np.sqrt(N))
 matrix = csr_matrix(matrix)
 # Compute eigenvalues
 eigvals = eigvalsh(matrix, window_size)
-```
-
-* Eigenvalues and eigenvectors
-```python
-eigvals, eigvecs = eigh(matrix, window_size)
 ```
