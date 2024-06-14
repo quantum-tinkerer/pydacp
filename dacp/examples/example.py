@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # %%
-from dacp.solver import estimated_errors, eigvalsh
+from dacp import estimated_errors, eigvalsh
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
