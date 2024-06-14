@@ -1,5 +1,5 @@
 import numpy as np
-from dacp.dacp import eigvalsh, estimated_errors
+from dacp.solver import eigvalsh, estimated_errors
 from scipy.sparse import csr_matrix, kron
 from scipy.sparse import diags, eye
 import pytest
@@ -10,9 +10,9 @@ N_block = 200
 deg_n = 5
 loop_n = 2
 window_size = 0.1
-window=[-window_size, window_size]
-k=12
-tol=1e-4
+window = [-window_size, window_size]
+k = 12
+tol = 1e-4
 
 
 def random_ham(N):
@@ -22,9 +22,11 @@ def random_ham(N):
     H = diags(c, offsets=-1) + diags(b, offsets=0) + diags(c.conj(), offsets=1)
     return csr_matrix(H)
 
+
 def random_ham_deg(N, deg):
     H = random_ham(N)
     return csr_matrix(kron(H, eye(deg)))
+
 
 def eigv_errors(H, window, **dacp_kwargs):
     eigv, _ = np.linalg.eigh(H.todense())
@@ -62,6 +64,7 @@ def eigv_errors_test(deg=False, **dacp_kwargs):
 
     return np.asarray(relative_error_list)
 
+
 @pytest.mark.repeat(loop_n)
 def test_eigvals():
     """
@@ -69,6 +72,7 @@ def test_eigvals():
     """
     error_diff = eigv_errors_test()
     assert error_diff.any(), "Errors don't match the theoretical value."
+
 
 @pytest.mark.repeat(loop_n)
 def test_eigvals_deg():

@@ -2,13 +2,13 @@
 
 A python package to compute eigenvalues using the dual applications of Chebyshev polynomials algorithm. The algorithm is described in [SciPost Phys. 11, 103 (2021)](https://scipost.org/SciPostPhys.11.6.103).
 
-This package implements an algorithm that computes the eigenvalues of hermitian linear opeators within a given window. Besides the original algorithm, we also provide a way to deal with degeneracies systematically, and remove the need of prior estimations of the number of eigenvalues. The algorithm is useful for large, sufficiently sparse matrices.
+This package implements an algorithm that computes the eigenvalues of hermitian linear operators within a given window. Besides the original algorithm, we also provide a way to deal with degeneracies systematically, and remove the need of prior estimations of the number of eigenvalues. The algorithm is useful for large, sufficiently sparse matrices.
 
 This is an experimental version, so use at your own risk.
 
 ## Content
 
-* Instalation
+* Installation
 * The algorithm
     + First application of Chebyshev polynomials
     + Second application of Chebyshev polynomials
@@ -52,7 +52,7 @@ T_k(\mathcal{F})|r\rangle = |r_E\rangle.
 ### Second application of Chebyshev polynomials
 
 Now we have one single vector $`|r_E\rangle`$ within the energy window we want.
-And we use again Chebyshev polynomials to span the full basis of the subspace $`\mathcal{L}`$ 
+And we use again Chebyshev polynomials to span the full basis of the subspace $`\mathcal{L}`$
 with $`E \in [-a, a]`$.
 For that, we define a second operator, $`\mathcal{G}`$,
 which is simply the rescaled Hamiltonian such that all eigenvalues are within $`[-1, 1]`$:
@@ -96,7 +96,7 @@ This is possible because of two properties combined:
 1. $`[T_i(\mathcal{H}), \mathcal{H}]=0`$
 2. $`T_i(\mathcal{H})T_j(\mathcal{H}) = \frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right)~.`$
 
-Combining those two properties, we only need to store the fitered vectors from previous runs $`|r_E^{pref}\rangle`$ and compute:
+Combining those two properties, we only need to store the filtered vectors from previous runs $`|r_E^{pref}\rangle`$ and compute:
 ```math
 S_{ij} = \left r_E^{prev}| \left[\frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right) |r_E^{current}\rangle\right]~.
 ```

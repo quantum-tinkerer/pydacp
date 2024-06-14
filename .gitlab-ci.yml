@@ -8,5 +8,5 @@ tests:
     stage: tests
     script:
         - cd dacp/tests
-        - python -m unittest -v tests.py   
+        - python -m unittest -v tests.py
     allow_failure: true
