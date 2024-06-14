@@ -202,7 +202,7 @@ def combine_loops(S_new, S_prev):
     """
     Combine previous and new matrix entries.
 
-    Paramters:
+    Parameters:
     ----------
 
     S_new : ndarray
@@ -601,6 +601,7 @@ def eigvalsh_single_run(
                 return eigvals[np.abs(eigvals) <= window_size] + sigma
         N_loop += 1
 
+
 def eigvalsh(
     A,
     window,
@@ -660,11 +661,12 @@ def eigvalsh(
     else:
         return []
 
+
 def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
     """
     Computes estimated of eigenvalues.
 
-    Paramters:
+    Parameters:
     ---------
     eigvals : 1D-array
         Eigenvalues found by the eigensolver.
