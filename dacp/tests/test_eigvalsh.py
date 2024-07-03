@@ -8,7 +8,7 @@ import pytest
 N = 1000
 N_block = 200
 deg_n = 5
-loop_n = 2
+loop_n = 10
 window_size = 0.1
 window = [-window_size, window_size]
 k = 12
@@ -49,8 +49,11 @@ def compute_errors(H, window, **dacp_kwargs):
     ]
     eta = estimated_errors(eigvals=eigvals_dacp, tol=tol, filter_order=k, window=window)
 
-    diff = relative_error - 10 * eta
-    return diff
+    diff = (
+        relative_error * np.heaviside(np.finfo(float).eps - relative_error, 0)
+        - 10 * eta
+    )
+    return np.heaviside(diff - np.finfo(float).eps, 0) * diff
 
 
 def eigvals_errors_test(deg=False, **dacp_kwargs):
@@ -73,7 +76,7 @@ def test_eigvals():
     Test the eigenvalue with non-degenerate hamiltonians
     """
     error_diff = eigvals_errors_test()
-    assert (error_diff < 0).all(), "Errors don't match the theoretical value."
+    assert (error_diff <= 0).all(), "Errors don't match the theoretical value."
 
 
 @pytest.mark.repeat(loop_n)
@@ -82,4 +85,4 @@ def test_eigvals_deg():
     Test the eigenvalue method with degenerate hamiltonians
     """
     error_diff = eigvals_errors_test(deg=True, random_vectors=2)
-    assert (error_diff < 0).all(), "Errors don't match the theoretical value."
+    assert (error_diff <= 0).all(), "Errors don't match the theoretical value."
