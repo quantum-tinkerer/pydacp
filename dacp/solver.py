@@ -1,4 +1,5 @@
 from scipy.sparse.linalg import eigsh, LinearOperator
+from scipy.sparse import sparray
 import scipy.linalg
 import numpy as np
 import warnings
@@ -608,7 +609,7 @@ def eigvalsh_single_run(
 
 
 def eigvalsh(
-    A: Union[np.ndarray, LinearOperator],
+    A: Union[np.ndarray, LinearOperator, sparray],
     window: tuple,
     bounds: Union[tuple, None] = None,
     random_vectors: int = 2,
