@@ -1,4 +1,4 @@
-image: gitlab.kwant-project.org:5005/qt/research-docker
+image: mambaorg/micromamba:1.4.3
 
 before_script:
   - mkdir -p micromamba
