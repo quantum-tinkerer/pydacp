@@ -3,6 +3,7 @@ import scipy.linalg
 import numpy as np
 import warnings
 import itertools as it
+from typing import Any, Callable, Optional, Union
 
 
 def svd_decomposition(S, matrix_proj):
@@ -603,36 +604,36 @@ def eigvalsh_single_run(
 
 
 def eigvalsh(
-    A,
-    window,
-    bounds=None,
-    random_vectors=2,
-    filter_order=12,
-    tol=1e-4,
-):
+    A: Union[np.ndarray, LinearOperator],
+    window: tuple,
+    bounds: Union[tuple, None] = None,
+    random_vectors: int = 2,
+    filter_order: int = 12,
+    tol: float = 1e-4,
+) -> np.ndarray:
     """
     Eigenvalue solver. Automatically resolves degeneracies and remove incorrect eigenvalues.
 
     Parameters
     ----------
-    A : ndarray, sparse matrix or LinearOperator
+    A :
         Hermitian operator.
-    window : tuple
+    window :
         Eigenvalue window.
-    bounds : tuple, or None
+    bounds :
         Boundaries of the spectrum. If not provided the maximum and
         minimum eigenvalues are calculated.
-    random_vectors : int
+    random_vectors :
         When return_eigenvectors=False, specifies the maximum expected
         degeneracy of the matrix.
-    filter_order : int
+    filter_order :
         The number of times a vector is filtered is given by filter_order*E_max/a.
-    tol : float
+    tol :
         Maximum relative error tolerance for eigenvalues.
 
     Returns
     -------
-    eigvals : 1D-array
+    :
         Eigenvalues.
     """
     vals_1 = eigvalsh_single_run(
@@ -662,23 +663,25 @@ def eigvalsh(
         return []
 
 
-def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
+def estimated_errors(
+    eigvals: np.ndarray, window: tuple, tol: float = 1e-4, filter_order: int = 12
+):
     """
     Computes estimated relative errors of eigenvalues.
 
     Parameters
     ----------
-    eigvals : 1D-array
+    eigvals :
         Eigenvalues found by the eigensolver.
-    window : tuple
+    window :
         Upper and lower bounds of eigenvalues.
-    tol : float
+    tol :
         Tolerance of the eigensolver (default 1e-4).
-    filter_order : int
+    filter_order :
         Order of the Chebyshev filter (default 12).
     Returns
     -------
-    eigvals : 1D-array
+    :
         Relative errors.
     """
     window_size = (window[1] - window[0]) / 2
