@@ -611,7 +611,7 @@ def eigvalsh(
     tol=1e-4,
 ):
     """
-    Computes eigenvalues twice to remove wrong values.
+    Eigenvalue solver. Automatically resolves degeneracies and remove incorrect eigenvalues.
 
     Parameters
     ----------
@@ -630,8 +630,8 @@ def eigvalsh(
     tol : float
         Maximum relative error tolerance for eigenvalues.
 
-    Returns:
-    --------
+    Returns
+    -------
     eigvals : 1D-array
         Eigenvalues.
     """
@@ -664,11 +664,10 @@ def eigvalsh(
 
 def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
     """
-    Computes estimated of eigenvalues.
+    Computes estimated relative errors of eigenvalues.
 
-    Parameters:
-    -----------
-
+    Parameters
+    ----------
     eigvals : 1D-array
         Eigenvalues found by the eigensolver.
     window : tuple
@@ -677,6 +676,10 @@ def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
         Tolerance of the eigensolver (default 1e-4).
     filter_order : int
         Order of the Chebyshev filter (default 12).
+    Returns
+    -------
+    eigvals : 1D-array
+        Relative errors.
     """
     window_size = (window[1] - window[0]) / 2
     sigma = (window[1] + window[0]) / 2
