@@ -496,8 +496,12 @@ def eigvalsh_single_run(
         # rescaling we will add eps / 2 to the spectral bounds, we don't need
         # to know the bounds more accurately than eps / 2.
 
-        lmax = float(eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=eps / 2))
-        lmin = float(eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=eps / 2))
+        lmax = float(
+            eigsh(A, k=1, which="LA", return_eigenvectors=False, tol=eps / 2)[0]
+        )
+        lmin = float(
+            eigsh(A, k=1, which="SA", return_eigenvectors=False, tol=eps / 2)[0]
+        )
 
         if lmax - lmin <= abs(lmax + lmin) * eps / 4:
             raise ValueError(
