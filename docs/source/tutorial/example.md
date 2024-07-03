@@ -28,13 +28,6 @@ from matplotlib import rc
 import numpy as np
 from scipy.sparse import diags, eye
 from scipy.sparse import kron
-
-rc("font", **{"family": "sans-serif", "sans-serif": ["Helvetica"]})
-rc("text", usetex=True)
-plt.rcParams["figure.figsize"] = (4, 3)
-plt.rcParams["lines.linewidth"] = 0.65
-plt.rcParams["font.size"] = 18
-plt.rcParams["legend.fontsize"] = 18
 ```
 
 Let us start computing the eigenvalues of a random tri-diagonal hermitian matrix.
