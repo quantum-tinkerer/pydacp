@@ -24,6 +24,11 @@ run docs:
         - micromamba
 
 run tests:
+  variables:
+    OPENBLAS_NUM_THREADS : 1
+    OMP_NUM_THREADS : 1
+    MKL_DYNAMIC : FALSE
+    MKL_NUM_THREADS : 1
   script:
     - pip install pytest-cov pytest-randomly pytest-repeat pytest-ruff pytest-regressions
     - py.test
