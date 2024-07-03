@@ -17,6 +17,7 @@ kernelspec:
 :caption: Documentation
 
 tutorial/example.md
+documentation/dacp.md
 CHANGELOG.md
 AUTHORS.md
 ```
