@@ -49,7 +49,7 @@ def compute_errors(H, window, **dacp_kwargs):
     ]
     eta = estimated_errors(eigvals=eigvals_dacp, tol=tol, filter_order=k, window=window)
 
-    diff = relative_error - eta
+    diff = relative_error - 10 * eta
     return diff
 
 
