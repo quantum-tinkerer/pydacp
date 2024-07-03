@@ -73,7 +73,7 @@ def test_eigvals():
     Test the eigenvalue with non-degenerate hamiltonians
     """
     error_diff = eigvals_errors_test()
-    assert (error_diff > 0).any(), "Errors don't match the theoretical value."
+    assert (error_diff < 0).all(), "Errors don't match the theoretical value."
 
 
 @pytest.mark.repeat(loop_n)
@@ -82,4 +82,4 @@ def test_eigvals_deg():
     Test the eigenvalue method with degenerate hamiltonians
     """
     error_diff = eigvals_errors_test(deg=True, random_vectors=2)
-    assert (error_diff > 0).any(), "Errors don't match the theoretical value."
+    assert (error_diff < 0).all(), "Errors don't match the theoretical value."
