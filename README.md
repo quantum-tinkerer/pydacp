@@ -13,8 +13,7 @@ This is an experimental version, so use at your own risk.
     + First application of Chebyshev polynomials
     + Second application of Chebyshev polynomials
     + Dealing with degeneracies
-        - Eigenvalues + eigenvectors method (under development)
-        - Eigenvalues-only method
+    + How do we save memory?
 * Usage example
 
 ## Installation
@@ -28,40 +27,39 @@ pip install .
 
 ### First application of Chebyshev polynomials
 
-We write an arbitrary vector in terms of the eigenvectors of the Hamiltonian $\mathcal{H}$:
+We write an arbitrary vector in terms of the eigenvectors of an operator $\mathcal{H}$:
 
 $$
 |r\rangle = \sum_{E_i \in [-a, a]} \alpha_i |\psi_i\rangle + \sum_{E_i \notin [-a, a]} \beta_i |\phi_i\rangle.
 $$
 
-The idea now is to obtain an energy-filtered vector $|r_E\rangle$ by removing the second term of the equation above.
-To do so, we define the operator
+where $E_i$ are the eigenvalues corresponding to the eigenvectors $|\psi_i\rangle$.
+We define an eigenvalue filter
 
 $$
-\mathcal{F} := \frac{\mathcal{H}^2 - E_c}{E_0}
+\mathcal{F} := \frac{\mathcal{H}^2 - E_c}{E_0}~.
 $$
 
 with $E_c = E_{max}^2 + a^2$, and $E_0 = E_{max}^2 - a^2$.
-
-For a large enough $k$, the $k$-th order Chebyshev polynomial of $\mathcal{F}$ is
-
-$$
-T_k(\mathcal{F}) \approx e^{\frac{2k}{E_{max}}\sqrt{a^2 - \mathcal{H}^2}},
-$$
-
-which indeed filters states within the $[-a, a]$ window. So,
+For sufficiently large $k$, the $k$-th order Chebyshev polynomial of $\mathcal{F}$ is
 
 $$
-T_k(\mathcal{F})|r\rangle = |r_E\rangle.
+T_k(\mathcal{F}) \approx e^{\frac{2k}{E_{max}}\sqrt{a^2 - \mathcal{H}^2}}.
 $$
+
+Thus, it removes the vector components with eigenvalues outside the window $[-a, a]$:
+
+$$
+|r_E\rangle = \mathcal{F}|r\rangle = \sum_{E_i \in [-a, a]} \alpha_i |\psi_i\rangle
+$$
+
+> The Chebyshev filter is less effective at the edge of the interval $[-a, a]$. As a consequence, incorrect eigenvalues leak into the window. We remove them by running the algorithm twice and identifying unstable values.
 
 ### Second application of Chebyshev polynomials
 
-Now we have one single vector $|r_E\rangle$ within the energy window we want.
-And we use again Chebyshev polynomials to span the full basis of the subspace $\mathcal{L}$
-with $E \in [-a, a]$.
-For that, we define a second operator, $\mathcal{G}$,
-which is simply the rescaled Hamiltonian such that all eigenvalues are within $[-1, 1]$:
+Now we have one vector $|r_E\rangle$ within the energy window we want.
+And we use again Chebyshev polynomials to span the full basis of the subspace $\mathcal{L}$ with $E \in [-a, a]$.
+For that, we define a second operator, $\mathcal{G}$, which is simply the rescaled operator such that all eigenvalues are within $[-1, 1]$:
 
 $$
 \mathcal{G} = \frac{\mathcal{H} - E_c'}{E_0'}
@@ -69,7 +67,7 @@ $$
 
 with $E'_c = (E_{max} + E_{min})/2$, and $E'_0 = (E_{max} - E_{min})/2$.
 
-A full basis is then simply:
+One can generate a complete basis within the desired subspace as:
 
 $$
 \left\lbrace I, \sin(X), \cdots, \sin(nX), \cos(X), \cdots, \cos(nX)\right\rbrace |r_E\rangle.
@@ -77,13 +75,13 @@ $$
 
 with $X:=\pi\mathcal{G}/a_r$, and $a_r = a/\mathrm{max}(|E_{max}|, |E_{min}|)$.
 
-In fact, we can span the basis above by, instead of computing trigonometric functions of a matrix, computing simply several Chebyshev **polynomials** of $\mathcal{G}$.
+In fact, we can span the basis above by, instead of computing trigonometric functions of a matrix, computing several Chebyshev **polynomials** of $\mathcal{G}$.
+This expansion is called *Chebychev evolution*.
 
-The remaininig problem is that we don't know the value of $n$, so we must (over)estimate the dimension of this subspace.
-And guess what: we use **again** Chebyshev polynomials by performing a low-resolution KPM.
-Since we overestimate the dimension, we also want to get rid of linearly dependent vectors, so we do SVD.
+The remaininig problem is that we do not know the value of $n$, so we must (over)estimate the dimension of this subspace.
+To avoid an overestimation, we rather orthogonalize the subspace (with a QR decomposition) and stop the calculation when we cannot find another orthogonal vector to the existing set.
 
-The final set of vectors $\lbrace \psi_k \rbrace$ is then used to compute the projected low-energy Hamiltonian:
+The final set of vectors $\lbrace \psi_k \rbrace$ is then used to compute the projected operator within the desired eigenvalue window:
 
 $$
 H_{\text{eff}}^{ij} = \langle \psi_i |\mathcal{H}|\psi_j\rangle.
@@ -94,13 +92,8 @@ $$
 The method above is not able to resolve degeneracies: each random vector can only span a non-degenerate subspace of $\mathcal{L}$.
 We solve the problem by adding more random vectors.
 
-To make sure a complete basis is generated, after the end of each Chebolution&trade run finishes, we perform a QR decomposition of the overlap matrix $S$:
-
-$$
-S = QR~.
-$$
-
-When adding new random vectors no longer increase number of non-zero elements in $\mathrm{diag} R$, we stop the calculation.
+To make sure a complete basis is generated, after the end of each *Chebyshev evolution*, we check the orthogonality of the subspace by performing a QR decomposition of the overlap matrix $S$.
+We stop the calculation when adding a random vector does not increase the dimension of the target subspace.
 
 #### How do we save memory?
 
@@ -120,6 +113,8 @@ and
 $$
 H_{ij} = \left\langle r_E^{prev}\right| \mathcal{H} \left[\frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right) \right] \left|r_E^{current}\right\rangle~.
 $$
+
+> Because there reduction of memory usage when the eigenvectors are computed, we do not include an eigenvector calculator. For this particular use we recommend other established sparse methods such as Arnoldi.
 
 ## Usage example
 
