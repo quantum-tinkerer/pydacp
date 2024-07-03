@@ -667,7 +667,8 @@ def estimated_errors(eigvals, window, tol=1e-4, filter_order=12):
     Computes estimated of eigenvalues.
 
     Parameters:
-    ---------
+    -----------
+
     eigvals : 1D-array
         Eigenvalues found by the eigensolver.
     window : tuple
