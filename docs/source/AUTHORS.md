@@ -1,1 +1,1 @@
-/Users/arigottimanesc/Projects/pyDACP/AUTHORS.md
+../../AUTHORS.md

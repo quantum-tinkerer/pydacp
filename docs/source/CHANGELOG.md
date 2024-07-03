@@ -1,1 +1,1 @@
-/Users/arigottimanesc/Projects/pyDACP/CHANGELOG.md
+../../CHANGELOG.md
