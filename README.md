@@ -28,83 +28,98 @@ pip install .
 
 ### First application of Chebyshev polynomials
 
-We write an arbitrary vector in terms of the eigenvectors of the Hamiltonian $`\mathcal{H}`$:
-```math
+We write an arbitrary vector in terms of the eigenvectors of the Hamiltonian $\mathcal{H}$:
+
+$$
 |r\rangle = \sum_{E_i \in [-a, a]} \alpha_i |\psi_i\rangle + \sum_{E_i \notin [-a, a]} \beta_i |\phi_i\rangle.
-```
+$$
 
-The idea now is to obtain an energy-filtered vector $`|r_E\rangle`$ by removing the second term of the equation above.
+The idea now is to obtain an energy-filtered vector $|r_E\rangle$ by removing the second term of the equation above.
 To do so, we define the operator
-```math
-\mathcal{F} := \frac{\mathcal{H}^2 - E_c}{E_0}
-```
-with $`E_c = E_{max}^2 + a^2`$, and $`E_0 = E_{max}^2 - a^2`$.
 
-For a large enough $`k`$, the $`k`$-th order Chebyshev polynomial of $`\mathcal{F}`$ is
-```math
+$$
+\mathcal{F} := \frac{\mathcal{H}^2 - E_c}{E_0}
+$$
+
+with $E_c = E_{max}^2 + a^2$, and $E_0 = E_{max}^2 - a^2$.
+
+For a large enough $k$, the $k$-th order Chebyshev polynomial of $\mathcal{F}$ is
+
+$$
 T_k(\mathcal{F}) \approx e^{\frac{2k}{E_{max}}\sqrt{a^2 - \mathcal{H}^2}},
-```
-which indeed filters states within the $`[-a, a]`$ window. So,
-```math
+$$
+
+which indeed filters states within the $[-a, a]$ window. So,
+
+$$
 T_k(\mathcal{F})|r\rangle = |r_E\rangle.
-```
+$$
 
 ### Second application of Chebyshev polynomials
 
-Now we have one single vector $`|r_E\rangle`$ within the energy window we want.
-And we use again Chebyshev polynomials to span the full basis of the subspace $`\mathcal{L}`$
-with $`E \in [-a, a]`$.
-For that, we define a second operator, $`\mathcal{G}`$,
-which is simply the rescaled Hamiltonian such that all eigenvalues are within $`[-1, 1]`$:
-```math
+Now we have one single vector $|r_E\rangle$ within the energy window we want.
+And we use again Chebyshev polynomials to span the full basis of the subspace $\mathcal{L}$
+with $E \in [-a, a]$.
+For that, we define a second operator, $\mathcal{G}$,
+which is simply the rescaled Hamiltonian such that all eigenvalues are within $[-1, 1]$:
+
+$$
 \mathcal{G} = \frac{\mathcal{H} - E_c'}{E_0'}
-```
-with $`E'_c = (E_{max} + E_{min})/2`$, and $`E'_0 = (E_{max} - E_{min})/2`$.
+$$
+
+with $E'_c = (E_{max} + E_{min})/2$, and $E'_0 = (E_{max} - E_{min})/2$.
 
 A full basis is then simply:
-```math
+
+$$
 \left\lbrace I, \sin(X), \cdots, \sin(nX), \cos(X), \cdots, \cos(nX)\right\rbrace |r_E\rangle.
-```
-with $`X:=\pi\mathcal{G}/a_r`$, and $`a_r = a/\mathrm{max}(|E_{max}|, |E_{min}|)`$.
+$$
 
-In fact, we can span the basis above by, instead of computing trigonometric functions of a matrix, computing simply several Chebyshev **polynomials** of $`\mathcal{G}`$.
+with $X:=\pi\mathcal{G}/a_r$, and $a_r = a/\mathrm{max}(|E_{max}|, |E_{min}|)$.
 
-The remaininig problem is that we don't know the value of $`n`$, so we must (over)estimate the dimension of this subspace.
+In fact, we can span the basis above by, instead of computing trigonometric functions of a matrix, computing simply several Chebyshev **polynomials** of $\mathcal{G}$.
+
+The remaininig problem is that we don't know the value of $n$, so we must (over)estimate the dimension of this subspace.
 And guess what: we use **again** Chebyshev polynomials by performing a low-resolution KPM.
 Since we overestimate the dimension, we also want to get rid of linearly dependent vectors, so we do SVD.
 
-The final set of vectors $`\lbrace \psi_k \rbrace`$ is then used to compute the projected low-energy Hamiltonian:
-```math
+The final set of vectors $\lbrace \psi_k \rbrace$ is then used to compute the projected low-energy Hamiltonian:
+
+$$
 H_{\text{eff}}^{ij} = \langle \psi_i |\mathcal{H}|\psi_j\rangle.
-```
+$$
 
 ### Dealing with degeneracies
 
-The method above is not able to resolve degeneracies: each random vector can only span a non-degenerate subspace of $`\mathcal{L}`$.
+The method above is not able to resolve degeneracies: each random vector can only span a non-degenerate subspace of $\mathcal{L}$.
 We solve the problem by adding more random vectors.
 
-To make sure a complete basis is generated, after the end of each Chebolution&trade run finishes, we perform a QR decomposition of the overlap matrix $`S`$:
-```math
+To make sure a complete basis is generated, after the end of each Chebolution&trade run finishes, we perform a QR decomposition of the overlap matrix $S$:
+
+$$
 S = QR~.
-```
-When adding new random vectors no longer increase number of non-zero elements in $`\mathrm{diag} R`$, we stop the calculation.
+$$
+
+When adding new random vectors no longer increase number of non-zero elements in $\mathrm{diag} R$, we stop the calculation.
 
 #### How do we save memory?
 
 DACP provides an algorithm to directly compute the projected and overlap matrices without storing all vectors.
 This is possible because of two properties combined:
-1. $`[T_i(\mathcal{H}), \mathcal{H}]=0`$
-2. $`T_i(\mathcal{H})T_j(\mathcal{H}) = \frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right)~.`$
+1. $[T_i(\mathcal{H}), \mathcal{H}]=0$
+2. $T_i(\mathcal{H})T_j(\mathcal{H}) = \frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right)~.$
 
-Combining those two properties, we only need to store the filtered vectors from previous runs $`|r_E^{pref}\rangle`$ and compute:
-```math
-S_{ij} = \left r_E^{prev}| \left[\frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right) |r_E^{current}\rangle\right]~.
-```
+Combining those two properties, we only need to store the filtered vectors from previous runs $|r_E^{pref}\rangle$ and compute:
+
+$$
+S_{ij} = \left\langle r_E^{prev}\right| \frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right)\rangle \left|r_E^{current}\right\rangle~.
+$$
+
 and
-```math
-H_{ij} = \left r_E^{prev}| \mathcal{H} \left[\frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right) |r_E^{current}\rangle\right]~.
-```
 
+$$
+H_{ij} = \left\langle r_E^{prev}\right| \mathcal{H} \left[\frac12 \left(T_{i+j}(\mathcal{H}) + T_{|i-j|}(\mathcal{H}) \right) \right] \left|r_E^{current}\right\rangle~.
+$$
 
 ## Usage example
 
