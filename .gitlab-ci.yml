@@ -66,3 +66,21 @@ pages:
   artifacts:
     paths:
       - public
+
+run nox:
+  variables:
+    GIT_STRATEGY: clone
+    CONDA_PKGS_DIRS: micromamba/pkgs
+  parallel:
+    matrix:
+      - NOXSESSION:
+        - "tests(minimal)"
+        - "tests(mid)"
+        - "tests(latest)"
+  script:
+    - micromamba install -c conda-forge -y nox mamba
+    - nox -s $NOXSESSION
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+      - micromamba
