@@ -18,8 +18,3 @@
     </script>
   <!-- End Matomo Code -->
 {% endblock %}
-
-{# Replace "pyDAC" with a stylized version for prettiness #}
-{% block content %}
-{{ super() | replace('pyDACP', '<b style="color:#8b4aa0ff;">pyDACP</b>') }}
-{% endblock %}
