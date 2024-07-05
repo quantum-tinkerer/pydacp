@@ -19,7 +19,7 @@ This is an experimental version, so use at your own risk.
 ## Installation
 
 ```
-pip install dacp
+pip install pydacp
 ```
 
 ## The algorithm
